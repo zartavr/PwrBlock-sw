@@ -21,34 +21,10 @@
 
 /// Owner of a pin, reported by [SOURce]:DIGital:PIN<n>:FUNCtion?. Buses are
 /// wired to their own dedicated pins, so IO1 - IO7 are always GPIO.
-typedef enum {
+typedef enum
+{
     DIGITAL_FUNCTION_GPIO = 0,
 } DigitalFunction;
-
-/// Direction of a pin
-typedef enum {
-    DIGITAL_DIRECTION_INPUT = 0,
-    DIGITAL_DIRECTION_OUTPUT,
-} DigitalDirection;
-
-/// Output driver type of a pin
-typedef enum {
-    DIGITAL_MODE_PUSHPULL = 0,
-    DIGITAL_MODE_ODRAIN,
-} DigitalMode;
-
-/// Internal pull resistor of a pin
-typedef enum {
-    DIGITAL_PULL_NONE = 0,
-    DIGITAL_PULL_UP,
-    DIGITAL_PULL_DOWN,
-} DigitalPull;
-
-/// Logical polarity of a pin
-typedef enum {
-    DIGITAL_POLARITY_NORMAL = 0,
-    DIGITAL_POLARITY_INVERTED,
-} DigitalPolarity;
 
 // Parameter patterns, used to decode an enumerated value of a command
 static const scpi_choice_def_t DIRECTION_CHOICES[] = {
@@ -178,8 +154,9 @@ scpi_result_t SCPI_DigitalPinDirection(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the direction to the pin
     printf("DIG:PIN%ld:DIR %s\r\n", (long)pin, DIRECTION_NAMES[value]);
+
+    digital_gpio_direction_set((uint32_t)pin, (DigitalDirection)value);
     return SCPI_RES_OK;
 }
 
@@ -192,8 +169,10 @@ scpi_result_t SCPI_DigitalPinDirectionQ(scpi_t* context)
 
     printf("DIG:PIN%ld:DIR?\r\n", (long)pin);
 
-    // TODO: reply the actual direction of the pin
-    digital_name_result(context, DIRECTION_NAMES, DIGITAL_DIRECTION_INPUT);
+    const DigitalDirection direction =
+        digital_gpio_direction_get((uint32_t)pin);
+
+    digital_name_result(context, DIRECTION_NAMES, (int32_t)direction);
     return SCPI_RES_OK;
 }
 
@@ -205,8 +184,9 @@ scpi_result_t SCPI_DigitalPinMode(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the output driver type to the pin
     printf("DIG:PIN%ld:MODE %s\r\n", (long)pin, MODE_NAMES[value]);
+
+    digital_gpio_mode_set((uint32_t)pin, (DigitalMode)value);
     return SCPI_RES_OK;
 }
 
@@ -219,8 +199,9 @@ scpi_result_t SCPI_DigitalPinModeQ(scpi_t* context)
 
     printf("DIG:PIN%ld:MODE?\r\n", (long)pin);
 
-    // TODO: reply the actual output driver type of the pin
-    digital_name_result(context, MODE_NAMES, DIGITAL_MODE_PUSHPULL);
+    const DigitalMode mode = digital_gpio_mode_get((uint32_t)pin);
+
+    digital_name_result(context, MODE_NAMES, (int32_t)mode);
     return SCPI_RES_OK;
 }
 
@@ -232,8 +213,9 @@ scpi_result_t SCPI_DigitalPinPull(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the pull resistor to the pin
     printf("DIG:PIN%ld:PULL %s\r\n", (long)pin, PULL_NAMES[value]);
+
+    digital_gpio_pull_set((uint32_t)pin, (DigitalPull)value);
     return SCPI_RES_OK;
 }
 
@@ -246,8 +228,9 @@ scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context)
 
     printf("DIG:PIN%ld:PULL?\r\n", (long)pin);
 
-    // TODO: reply the actual pull resistor of the pin
-    digital_name_result(context, PULL_NAMES, DIGITAL_PULL_NONE);
+    const DigitalPull pull = digital_gpio_pull_get((uint32_t)pin);
+
+    digital_name_result(context, PULL_NAMES, (int32_t)pull);
     return SCPI_RES_OK;
 }
 
@@ -259,8 +242,9 @@ scpi_result_t SCPI_DigitalPinPolarity(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the polarity to the pin
     printf("DIG:PIN%ld:POL %s\r\n", (long)pin, POLARITY_NAMES[value]);
+
+    digital_gpio_polarity_set((uint32_t)pin, (DigitalPolarity)value);
     return SCPI_RES_OK;
 }
 
@@ -273,8 +257,9 @@ scpi_result_t SCPI_DigitalPinPolarityQ(scpi_t* context)
 
     printf("DIG:PIN%ld:POL?\r\n", (long)pin);
 
-    // TODO: reply the actual polarity of the pin
-    digital_name_result(context, POLARITY_NAMES, DIGITAL_POLARITY_NORMAL);
+    const DigitalPolarity polarity = digital_gpio_polarity_get((uint32_t)pin);
+
+    digital_name_result(context, POLARITY_NAMES, (int32_t)polarity);
     return SCPI_RES_OK;
 }
 
@@ -292,8 +277,9 @@ scpi_result_t SCPI_DigitalPinLevel(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the logical level to the pin
     printf("DIG:PIN%ld:LEV %u\r\n", (long)pin, (unsigned)state);
+
+    digital_gpio_level_set((uint32_t)pin, state);
     return SCPI_RES_OK;
 }
 
@@ -306,8 +292,7 @@ scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
 
     printf("DIG:PIN%ld:LEV?\r\n", (long)pin);
 
-    // TODO: reply the actual logical level on the pin
-    SCPI_ResultBool(context, false);
+    SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
     return SCPI_RES_OK;
 }
 
@@ -320,8 +305,11 @@ scpi_result_t SCPI_DigitalOutputData(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // TODO: apply the mask to all output pins at once
     printf("DIG:OUTP:DATA %lu\r\n", (unsigned long)mask);
+
+    // Bits above the pin count have no pin behind them and are ignored, the
+    // same way as the bits of input pins
+    digital_gpio_output_data_set(mask & DIGITAL_PIN_MASK);
     return SCPI_RES_OK;
 }
 
@@ -329,8 +317,7 @@ scpi_result_t SCPI_DigitalOutputDataQ(scpi_t* context)
 {
     printf("DIG:OUTP:DATA?\r\n");
 
-    // TODO: reply the levels set on all output pins
-    SCPI_ResultUInt32(context, 0);
+    SCPI_ResultUInt32(context, digital_gpio_output_data_get());
     return SCPI_RES_OK;
 }
 
@@ -338,7 +325,6 @@ scpi_result_t SCPI_DigitalInputDataQ(scpi_t* context)
 {
     printf("DIG:INP:DATA?\r\n");
 
-    // TODO: reply the actual levels of all pins
-    SCPI_ResultUInt32(context, 0);
+    SCPI_ResultUInt32(context, digital_gpio_input_data_get());
     return SCPI_RES_OK;
 }

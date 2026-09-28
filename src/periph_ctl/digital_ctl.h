@@ -16,11 +16,8 @@
 
 #pragma once
 
+#include "digital_gpio.h"
 #include "scpi/scpi.h"
-
-/// Number of GPIO pins IO1 - IO7 exposed on the external connector. Pin <n>
-/// of the DIGital subsystem corresponds to the IO<n> label on the connector.
-#define DIGITAL_PIN_COUNT 7
 
 /**
  * [SOURce]:DIGital:COUNt?

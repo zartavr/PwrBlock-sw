@@ -347,5 +347,10 @@ scpi_result_t SCPI_Control(
 scpi_result_t SCPI_Reset(scpi_t* context)
 {
     (void)context;
+
+    // All GPIO pins of the external connector go back to inputs with default
+    // settings
+    digital_gpio_reset();
+
     return SCPI_RES_OK;
 }
