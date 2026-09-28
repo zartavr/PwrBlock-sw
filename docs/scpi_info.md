@@ -43,3 +43,100 @@ List of supported SCPI commands:
   - `CALibration:CURRent:OFFSet {<Offset>}` - sets the offset of the linear approximation for the current setpoint function. The `Offset` parameter is in mA.
   - `CALibration:CURRent:OFFSet?` - query for the current offset of the linear approximation for the current setpoint function, in mA.
   - `CALibration:STORe` - command to save the current values of all calibration constants to non-volatile memory.
+- Digital I/O (GPIO) control:
+  - `<n>` - pin number, 1 to the value returned by `[SOURce]:DIGital:COUNt?`; if omitted, pin 1 is used.
+  - `[SOURce]:DIGital:COUNt?` - query for the number of GPIO pins, example output "8".
+  - `[SOURce]:DIGital:PIN<n>:FUNCtion?` - query for the current pin owner, example output "GPIO"; possible values: GPIO, I2C, SPI, UART. Each bus uses its own fixed GPIO pins; while the bus is enabled, these pins are reserved and GPIO commands for them generate error -221.
+  - `[SOURce]:DIGital:PIN<n>:DIRection {INPut | OUTPut}` - sets the pin direction. Default is INPut.
+  - `[SOURce]:DIGital:PIN<n>:DIRection?` - pin direction query.
+  - `[SOURce]:DIGital:PIN<n>:MODE {PUSHpull | ODRain}` - sets the output driver type: push-pull or open-drain. Default is PUSHpull.
+  - `[SOURce]:DIGital:PIN<n>:MODE?` - output driver type query.
+  - `[SOURce]:DIGital:PIN<n>:PULL {NONE | UP | DOWN}` - sets the internal pull resistor. Default is NONE.
+  - `[SOURce]:DIGital:PIN<n>:PULL?` - internal pull resistor query.
+  - `[SOURce]:DIGital:PIN<n>:POLarity {NORMal | INVerted}` - sets the logical polarity of the pin; with INVerted, logical 1 corresponds to a low physical level. Default is NORMal.
+  - `[SOURce]:DIGital:PIN<n>:POLarity?` - pin polarity query.
+  - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the logical output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
+  - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual logical level on the pin (for both input and output pins), example output "1".
+  - `[SOURce]:DIGital:OUTPut:DATA {<Value>}` - sets the levels of all output pins at once; bit 0 corresponds to pin 1. Bits of input and reserved pins are ignored. Accepts decimal or non-decimal values, e.g. `#H0F`, `#B00001111`.
+  - `[SOURce]:DIGital:OUTPut:DATA?` - query for the levels set on all output pins as a bit mask, example output "15".
+  - `[SOURce]:DIGital:INPut:DATA?` - query for the actual levels of all pins as a bit mask, example output "9".
+- Bus data format:
+  - `<Data>` - data parameter of bus write commands. Accepted in any of these forms, regardless of `FORMat[:DATA]`:
+    - comma-separated list of bytes, e.g. `#H50,#H01,255`;
+    - definite-length arbitrary block, e.g. `#13ABC` (the first digit is the number of length digits, then the length, then the bytes).
+  - `FORMat[:DATA] {ASCii | HEXadecimal | INTeger}` - sets the response format of bus read queries: ASCii - comma-separated decimal bytes, example output "80,1,255"; HEXadecimal - comma-separated hexadecimal bytes, example output "#H50,#H01,#HFF"; INTeger - definite-length arbitrary block of raw bytes, example output "#13ABC". Default is HEXadecimal.
+  - `FORMat[:DATA]?` - response format query.
+- Bus I2C control (master mode):
+  - `BUS:I2C:STATe {OFF | ON | 0 | 1}` - enables and disables the I2C bus. When enabled, the SDA and SCL pins are reserved from GPIO.
+  - `BUS:I2C:STATe?` - I2C bus state query.
+  - `BUS:I2C:FREQuency {<Frequency>}` - sets the SCL clock frequency (in hertz), e.g. 100000 or 400000.
+  - `BUS:I2C:FREQuency? [MIN | MAX]` - SCL clock frequency, or the allowed minimum/maximum value.
+  - `BUS:I2C:ADDRess {<Address>}` - sets the slave address used by `WRITe`, `READ?` and `TRANsfer?`. `Address` is the unshifted slave address, e.g. `#H50`.
+  - `BUS:I2C:ADDRess?` - slave address query, example output "80".
+  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7.
+  - `BUS:I2C:ADDRess:WIDTh?` - slave address width query.
+  - `BUS:I2C:PULLup {OFF | ON | 0 | 1}` - enables and disables the internal pull-up resistors on SDA and SCL.
+  - `BUS:I2C:PULLup?` - internal pull-up state query.
+  - `BUS:I2C:TIMEout {<Timeout>}` - sets the transaction timeout (in milliseconds), including clock stretching by the slave.
+  - `BUS:I2C:TIMEout? [MIN | MAX]` - transaction timeout, or the allowed minimum/maximum value.
+  - `BUS:I2C:WRITe {<Data>}` - writes data to the slave: START, address + W, data, STOP.
+  - `BUS:I2C:READ? {<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. Response format is set by `FORMat[:DATA]`, example output "18,52".
+  - `BUS:I2C:TRANsfer? {<Count>},{<Data>}` - writes data to the slave, then reads `Count` bytes in the same transaction using a repeated START (typical register read), example: `BUS:I2C:TRAN? 2,#H10` reads 2 bytes from register 0x10.
+  - `BUS:I2C:SCAN?` - scans the bus and returns the addresses of all slaves that acknowledged, example output "#H48,#H50"; returns "NONE" if no slave responded.
+  - `BUS:I2C:RECover` - bus recovery: generates up to 9 SCL pulses followed by STOP to release SDA held low by a slave.
+- Bus SPI control (master mode):
+  - `BUS:SPI:STATe {OFF | ON | 0 | 1}` - enables and disables the SPI bus. When enabled, the SCK, MOSI, MISO and CS pins are reserved from GPIO.
+  - `BUS:SPI:STATe?` - SPI bus state query.
+  - `BUS:SPI:FREQuency {<Frequency>}` - sets the SCK clock frequency (in hertz). The nearest supported frequency not higher than the requested one is used.
+  - `BUS:SPI:FREQuency? [MIN | MAX]` - actual SCK clock frequency, or the allowed minimum/maximum value.
+  - `BUS:SPI:MODE {0 | 1 | 2 | 3}` - sets the SPI mode (CPOL and CPHA combination). Default is 0.
+  - `BUS:SPI:MODE?` - SPI mode query.
+  - `BUS:SPI:BIT:ORDer {MSBFirst | LSBFirst}` - sets the bit transmission order. Default is MSBFirst.
+  - `BUS:SPI:BIT:ORDer?` - bit transmission order query.
+  - `BUS:SPI:FILL {<Byte>}` - sets the byte transmitted on MOSI during read-only phases. Default is `#HFF`.
+  - `BUS:SPI:FILL?` - fill byte query.
+  - `BUS:SPI:CSELect:POLarity {NORMal | INVerted}` - sets chip select polarity: NORMal - active low, INVerted - active high. Default is NORMal.
+  - `BUS:SPI:CSELect:POLarity?` - chip select polarity query.
+  - `BUS:SPI:CSELect:MODE {AUTO | MANual}` - sets chip select control: AUTO - CS is asserted for the duration of each transfer command; MANual - CS is controlled only by `BUS:SPI:CSELect[:STATe]`, which allows one transaction to span several commands. Default is AUTO.
+  - `BUS:SPI:CSELect:MODE?` - chip select control mode query.
+  - `BUS:SPI:CSELect[:STATe] {OFF | ON | 0 | 1}` - asserts (ON) or releases (OFF) chip select in MANual mode; generates error -221 in AUTO mode.
+  - `BUS:SPI:CSELect[:STATe]?` - chip select state query.
+  - `BUS:SPI:WRITe {<Data>}` - transmits data; received bytes are discarded.
+  - `BUS:SPI:READ? {<Count>}` - transmits `Count` fill bytes and returns the received bytes. Response format is set by `FORMat[:DATA]`.
+  - `BUS:SPI:TRANsfer? {<Count>},{<Data>}` - transmits data, then reads `Count` bytes under one chip select assertion (typical command/register read), example: `BUS:SPI:TRAN? 3,#H9F` reads a 3-byte JEDEC ID from a flash chip.
+  - `BUS:SPI:EXCHange? {<Data>}` - full-duplex transfer: transmits data and returns the same number of received bytes.
+- Bus UART control:
+  - `BUS:UART:STATe {OFF | ON | 0 | 1}` - enables and disables the UART bus. When enabled, the TX and RX pins are reserved from GPIO. Disabling the bus clears the receive buffer.
+  - `BUS:UART:STATe?` - UART bus state query.
+  - `BUS:UART:BAUD {<Baud>}` - sets the baud rate, e.g. 9600 or 115200.
+  - `BUS:UART:BAUD? [MIN | MAX]` - baud rate, or the allowed minimum/maximum value.
+  - `BUS:UART:BITS {7 | 8}` - sets the number of data bits. Default is 8.
+  - `BUS:UART:BITS?` - data bits query.
+  - `BUS:UART:PARity[:TYPE] {NONE | EVEN | ODD}` - sets the parity type. Default is NONE.
+  - `BUS:UART:PARity[:TYPE]?` - parity type query.
+  - `BUS:UART:SBITs {1 | 2}` - sets the number of stop bits. Default is 1.
+  - `BUS:UART:SBITs?` - stop bits query.
+  - `BUS:UART:PACE {NONE | HARDware}` - sets flow control: NONE or hardware RTS/CTS. Default is NONE. HARDware reserves the RTS and CTS pins in addition to TX and RX.
+  - `BUS:UART:PACE?` - flow control query.
+  - `BUS:UART:TIMEout {<Timeout>}` - sets the receive wait time (in milliseconds) for `READ?` and `TRANsfer?`.
+  - `BUS:UART:TIMEout? [MIN | MAX]` - receive wait time, or the allowed minimum/maximum value.
+  - `BUS:UART:WRITe {<Data>}` - transmits data; the command completes when all bytes are sent.
+  - `BUS:UART:READ? [<Count>]` - returns bytes from the receive buffer. With `Count`, waits until `Count` bytes are received or the timeout expires, and returns the bytes received so far. Without `Count`, returns all buffered bytes immediately. Returns "NONE" if no bytes are available. Response format is set by `FORMat[:DATA]`.
+  - `BUS:UART:TRANsfer? {<Count>},{<Data>}` - clears the receive buffer, transmits data and waits for `Count` bytes or the timeout (request-response devices), example: `BUS:UART:TRAN? 8,"AT\r\n"`.
+  - `BUS:UART:BUFFer:COUNt?` - query for the number of bytes in the receive buffer, example output "12".
+  - `BUS:UART:BUFFer:CLEar` - clears the receive buffer.
+- Bus error codes (returned by `SYSTem:ERRor[:NEXT]?`):
+  - `-221,"Settings conflict"` - pin is reserved by an enabled bus, a bus whose pins are in use cannot be enabled, the bus is disabled, or the command is not allowed in the current mode.
+  - `-222,"Data out of range"` - address, count, frequency or pin number out of range.
+  - `-223,"Too much data"` - transfer length exceeds the device buffer.
+  - `-224,"Illegal parameter value"` - invalid enumerated value.
+  - `301,"I2C address NACK"` - no slave acknowledged the address.
+  - `302,"I2C data NACK"` - the slave did not acknowledge a data byte.
+  - `303,"I2C bus timeout"` - transaction timeout, or bus held low by a slave (use `BUS:I2C:RECover`).
+  - `304,"I2C arbitration lost"` - another master is active on the bus.
+  - `311,"UART receive buffer overflow"` - received bytes were lost.
+  - `312,"UART framing error"` - invalid stop bit received.
+  - `313,"UART parity error"` - parity check failed.
+- Bus and GPIO state after `*RST` and power-on:
+  - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
+  - `*SAV` and `*RCL` do not affect bus and GPIO state.
