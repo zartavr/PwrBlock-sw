@@ -260,3 +260,11 @@ scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
     SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
     return SCPI_RES_OK;
 }
+
+scpi_result_t SCPI_DigitalReset(scpi_t* context)
+{
+    (void)context;
+
+    digital_gpio_reset();
+    return SCPI_RES_OK;
+}

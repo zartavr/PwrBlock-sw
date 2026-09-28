@@ -19,6 +19,17 @@
 #include <scpi/scpi.h>
 
 /**
+ * @brief Restore the power-on defaults of all pins.
+ *
+ * Wraps digital_gpio_reset() so that callers outside the periph_ctl backend,
+ * e.g. *RST, do not depend on it directly.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalReset(scpi_t* context);
+
+/**
  * [SOURce]:DIGital:COUNt?
  * @brief This query returns the number of GPIO pins.
  *
