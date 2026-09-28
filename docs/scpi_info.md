@@ -44,9 +44,9 @@ List of supported SCPI commands:
   - `CALibration:CURRent:OFFSet?` - query for the current offset of the linear approximation for the current setpoint function, in mA.
   - `CALibration:STORe` - command to save the current values of all calibration constants to non-volatile memory.
 - Digital I/O (GPIO) control:
-  - `<n>` - pin number, 1 to the value returned by `[SOURce]:DIGital:COUNt?`; if omitted, pin 1 is used.
-  - `[SOURce]:DIGital:COUNt?` - query for the number of GPIO pins, example output "8".
-  - `[SOURce]:DIGital:PIN<n>:FUNCtion?` - query for the current pin owner, example output "GPIO"; possible values: GPIO, I2C, SPI, UART. Each bus uses its own fixed GPIO pins; while the bus is enabled, these pins are reserved and GPIO commands for them generate error -221.
+  - `<n>` - pin number, 1 to the value returned by `[SOURce]:DIGital:COUNt?`; if omitted, pin 1 is used. Pin `<n>` corresponds to the IO`<n>` label on the external connector.
+  - `[SOURce]:DIGital:COUNt?` - query for the number of GPIO pins, example output "7".
+  - `[SOURce]:DIGital:PIN<n>:FUNCtion?` - query for the current pin owner, example output "GPIO". Every bus is wired to its own dedicated pins, so IO1 - IO7 are always GPIO and the reply is always "GPIO".
   - `[SOURce]:DIGital:PIN<n>:DIRection {INPut | OUTPut}` - sets the pin direction. Default is INPut.
   - `[SOURce]:DIGital:PIN<n>:DIRection?` - pin direction query.
   - `[SOURce]:DIGital:PIN<n>:MODE {PUSHpull | ODRain}` - sets the output driver type: push-pull or open-drain. Default is PUSHpull.
@@ -57,7 +57,7 @@ List of supported SCPI commands:
   - `[SOURce]:DIGital:PIN<n>:POLarity?` - pin polarity query.
   - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the logical output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
   - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual logical level on the pin (for both input and output pins), example output "1".
-  - `[SOURce]:DIGital:OUTPut:DATA {<Value>}` - sets the levels of all output pins at once; bit 0 corresponds to pin 1. Bits of input and reserved pins are ignored. Accepts decimal or non-decimal values, e.g. `#H0F`, `#B00001111`.
+  - `[SOURce]:DIGital:OUTPut:DATA {<Value>}` - sets the levels of all output pins at once; bit 0 corresponds to pin 1. Bits of input pins are ignored. Accepts decimal or non-decimal values, e.g. `#H0F`, `#B00001111`.
   - `[SOURce]:DIGital:OUTPut:DATA?` - query for the levels set on all output pins as a bit mask, example output "15".
   - `[SOURce]:DIGital:INPut:DATA?` - query for the actual levels of all pins as a bit mask, example output "9".
 - Bus data format:

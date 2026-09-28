@@ -1,5 +1,6 @@
 #include "scpi_def.h"
 #include "control/control.h"
+#include "periph_ctl/digital_ctl.h"
 #include "scpi/scpi.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,6 +232,68 @@ const scpi_command_t scpi_commands[] = {
     {.pattern  = "CALibration:CURRent:OFFSet?",
      .callback = SCPI_CalibrationCurrentOffsetQ},
     {.pattern = "CALibration:STORe", .callback = SCPI_CalibrationStore},
+
+    /* DIGital subsystem */
+    {
+     .pattern  = "[SOURce]:DIGital:COUNt?",
+     .callback = SCPI_DigitalCountQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:FUNCtion?",
+     .callback = SCPI_DigitalPinFunctionQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:DIRection",
+     .callback = SCPI_DigitalPinDirection,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:DIRection?",
+     .callback = SCPI_DigitalPinDirectionQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:MODE",
+     .callback = SCPI_DigitalPinMode,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:MODE?",
+     .callback = SCPI_DigitalPinModeQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:PULL",
+     .callback = SCPI_DigitalPinPull,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:PULL?",
+     .callback = SCPI_DigitalPinPullQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:POLarity",
+     .callback = SCPI_DigitalPinPolarity,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#:POLarity?",
+     .callback = SCPI_DigitalPinPolarityQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#[:LEVel]",
+     .callback = SCPI_DigitalPinLevel,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:PIN#[:LEVel]?",
+     .callback = SCPI_DigitalPinLevelQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:OUTPut:DATA",
+     .callback = SCPI_DigitalOutputData,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:OUTPut:DATA?",
+     .callback = SCPI_DigitalOutputDataQ,
+     },
+    {
+     .pattern  = "[SOURce]:DIGital:INPut:DATA?",
+     .callback = SCPI_DigitalInputDataQ,
+     },
 
     SCPI_CMD_LIST_END
 };

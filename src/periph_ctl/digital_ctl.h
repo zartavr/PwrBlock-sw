@@ -1,0 +1,164 @@
+/*
+ * Copyright 2026 Everypin
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include "scpi/scpi.h"
+
+/// Number of GPIO pins IO1 - IO7 exposed on the external connector. Pin <n>
+/// of the DIGital subsystem corresponds to the IO<n> label on the connector.
+#define DIGITAL_PIN_COUNT 7
+
+/**
+ * [SOURce]:DIGital:COUNt?
+ * @brief This query returns the number of GPIO pins.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalCountQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:FUNCtion?
+ * @brief This query returns the current owner of the pin. IO1 - IO7 are always
+ * GPIO, every bus is wired to its own dedicated pins, so the reply is always
+ * GPIO. Kept for forward compatibility.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinFunctionQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:DIRection {INPut | OUTPut}
+ * @brief Set up direction of the pin. Default is INPut.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinDirection(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:DIRection?
+ * @brief This query returns direction of the pin.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinDirectionQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:MODE {PUSHpull | ODRain}
+ * @brief Set up output driver type of the pin. Default is PUSHpull.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinMode(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:MODE?
+ * @brief This query returns output driver type of the pin.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinModeQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:PULL {NONE | UP | DOWN}
+ * @brief Set up internal pull resistor of the pin. Default is NONE.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinPull(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:PULL?
+ * @brief This query returns internal pull resistor of the pin.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:POLarity {NORMal | INVerted}
+ * @brief Set up logical polarity of the pin. With INVerted logical 1
+ * corresponds to a low physical level. Default is NORMal.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinPolarity(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>:POLarity?
+ * @brief This query returns logical polarity of the pin.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinPolarityQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}
+ * @brief Set up logical output level of the pin. For an input pin the value is
+ * stored and applied when the pin is switched to output.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinLevel(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:PIN<n>[:LEVel]?
+ * @brief This query returns actual logical level on the pin, for both input
+ * and output pins.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:OUTPut:DATA {<Value>}
+ * @brief Set up levels of all output pins at once, bit 0 corresponds to pin 1.
+ * Bits of input and reserved pins are ignored.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalOutputData(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:OUTPut:DATA?
+ * @brief This query returns levels set on all output pins as a bit mask.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalOutputDataQ(scpi_t* context);
+
+/**
+ * [SOURce]:DIGital:INPut:DATA?
+ * @brief This query returns actual levels of all pins as a bit mask.
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_DigitalInputDataQ(scpi_t* context);
