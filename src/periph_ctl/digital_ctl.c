@@ -15,6 +15,7 @@
  */
 
 #include "digital_ctl.h"
+#include "digital_gpio.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,8 +29,8 @@ typedef enum
 
 // Parameter patterns, used to decode an enumerated value of a command
 static const scpi_choice_def_t DIRECTION_CHOICES[] = {
-    {"INPut",   DIGITAL_DIRECTION_INPUT },
-    {"OUTPut",  DIGITAL_DIRECTION_OUTPUT},
+    {"INPut",  DIGITAL_DIRECTION_INPUT },
+    {"OUTPut", DIGITAL_DIRECTION_OUTPUT},
     SCPI_CHOICE_LIST_END
 };
 

@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include "digital_gpio.h"
-#include "scpi/scpi.h"
+#include <scpi/scpi.h>
 
 /**
  * [SOURce]:DIGital:COUNt?

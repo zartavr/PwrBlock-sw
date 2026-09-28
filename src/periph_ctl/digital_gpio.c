@@ -120,9 +120,10 @@ static void digital_pin_apply(uint32_t index)
     }
 
     if (cfg->direction == DIGITAL_DIRECTION_OUTPUT) {
-        init.Mode = (cfg->mode == DIGITAL_MODE_ODRAIN) ? GPIO_MODE_OUTPUT_OD
-                                                       : GPIO_MODE_OUTPUT_PP;
-    } else {
+        init.Mode = (cfg->mode == DIGITAL_MODE_ODRAIN) ? GPIO_MODE_OUTPUT_OD :
+                                                         GPIO_MODE_OUTPUT_PP;
+    }
+    else {
         init.Mode = GPIO_MODE_INPUT;
     }
 
