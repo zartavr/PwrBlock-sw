@@ -23,9 +23,6 @@
 /// of the DIGital subsystem corresponds to the IO<n> label on the connector.
 #define DIGITAL_PIN_COUNT 7
 
-/// Bit mask of all pins of the subsystem, bit 0 corresponds to pin 1
-#define DIGITAL_PIN_MASK ((1UL << DIGITAL_PIN_COUNT) - 1UL)
-
 /// Direction of a pin
 typedef enum
 {
@@ -48,13 +45,6 @@ typedef enum
     DIGITAL_PULL_DOWN,
 } DigitalPull;
 
-/// Logical polarity of a pin
-typedef enum
-{
-    DIGITAL_POLARITY_NORMAL = 0,
-    DIGITAL_POLARITY_INVERTED,
-} DigitalPolarity;
-
 /**
  * @brief Init the GPIO subsystem of the external connector.
  *
@@ -71,7 +61,7 @@ void digital_gpio_init(void);
  * @brief Restore the power-on defaults of all pins, used by *RST.
  *
  * Every pin becomes an input without a pull resistor, with a push-pull
- * driver, normal polarity and a stored output level of 0.
+ * driver and a stored output level of 0.
  */
 void digital_gpio_reset(void);
 
@@ -127,68 +117,20 @@ void digital_gpio_pull_set(uint32_t pin, DigitalPull pull);
 DigitalPull digital_gpio_pull_get(uint32_t pin);
 
 /**
- * @brief Set up logical polarity of a pin.
- *
- * The logical level of the pin is kept, so an output pin is re-driven with
- * the physical level matching the new polarity.
- *
- * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
- * @param polarity Polarity to apply.
- */
-void digital_gpio_polarity_set(uint32_t pin, DigitalPolarity polarity);
-
-/**
- * @brief Get logical polarity of a pin.
- *
- * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
- * @return DigitalPolarity Current polarity of the pin.
- */
-DigitalPolarity digital_gpio_polarity_get(uint32_t pin);
-
-/**
- * @brief Set up logical output level of a pin.
+ * @brief Set up output level of a pin.
  *
  * For an input pin the level is only stored and is applied when the pin is
  * switched to output.
  *
  * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
- * @param level Logical level to apply.
+ * @param level Level to apply.
  */
 void digital_gpio_level_set(uint32_t pin, bool level);
 
 /**
- * @brief Get the actual logical level on a pin, for both input and output
- * pins.
+ * @brief Get the actual level on a pin, for both input and output pins.
  *
  * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
- * @return bool Logical level read from the pin.
+ * @return bool Level read from the pin.
  */
 bool digital_gpio_level_get(uint32_t pin);
-
-/**
- * @brief Set up logical levels of all output pins at once.
- *
- * Bit 0 of the mask corresponds to pin 1. Bits of input pins are ignored,
- * their stored level is left untouched.
- *
- * @param mask Logical levels to apply.
- */
-void digital_gpio_output_data_set(uint32_t mask);
-
-/**
- * @brief Get the logical levels set on all output pins.
- *
- * Bit 0 of the mask corresponds to pin 1. Bits of input pins read as 0.
- *
- * @return uint32_t Logical levels of the output pins.
- */
-uint32_t digital_gpio_output_data_get(void);
-
-/**
- * @brief Get the actual logical levels of all pins.
- *
- * Bit 0 of the mask corresponds to pin 1.
- *
- * @return uint32_t Logical levels read from the pins.
- */
-uint32_t digital_gpio_input_data_get(void);

@@ -53,13 +53,8 @@ List of supported SCPI commands:
   - `[SOURce]:DIGital:PIN<n>:MODE?` - output driver type query.
   - `[SOURce]:DIGital:PIN<n>:PULL {NONE | UP | DOWN}` - sets the internal pull resistor. Default is NONE.
   - `[SOURce]:DIGital:PIN<n>:PULL?` - internal pull resistor query.
-  - `[SOURce]:DIGital:PIN<n>:POLarity {NORMal | INVerted}` - sets the logical polarity of the pin; with INVerted, logical 1 corresponds to a low physical level. Default is NORMal.
-  - `[SOURce]:DIGital:PIN<n>:POLarity?` - pin polarity query.
-  - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the logical output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
-  - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual logical level on the pin (for both input and output pins), example output "1".
-  - `[SOURce]:DIGital:OUTPut:DATA {<Value>}` - sets the levels of all output pins at once; bit 0 corresponds to pin 1. Bits of input pins are ignored. Accepts decimal or non-decimal values, e.g. `#H0F`, `#B00001111`.
-  - `[SOURce]:DIGital:OUTPut:DATA?` - query for the levels set on all output pins as a bit mask, example output "15".
-  - `[SOURce]:DIGital:INPut:DATA?` - query for the actual levels of all pins as a bit mask, example output "9".
+  - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
+  - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual level on the pin (for both input and output pins), example output "1".
 - Bus data format:
   - `<Data>` - data parameter of bus write commands. Accepted in any of these forms, regardless of `FORMat[:DATA]`:
     - comma-separated list of bytes, e.g. `#H50,#H01,255`;

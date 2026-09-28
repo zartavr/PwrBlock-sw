@@ -94,28 +94,9 @@ scpi_result_t SCPI_DigitalPinPull(scpi_t* context);
 scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context);
 
 /**
- * [SOURce]:DIGital:PIN<n>:POLarity {NORMal | INVerted}
- * @brief Set up logical polarity of the pin. With INVerted logical 1
- * corresponds to a low physical level. Default is NORMal.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_DigitalPinPolarity(scpi_t* context);
-
-/**
- * [SOURce]:DIGital:PIN<n>:POLarity?
- * @brief This query returns logical polarity of the pin.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_DigitalPinPolarityQ(scpi_t* context);
-
-/**
  * [SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}
- * @brief Set up logical output level of the pin. For an input pin the value is
- * stored and applied when the pin is switched to output.
+ * @brief Set up output level of the pin. For an input pin the value is stored
+ * and applied when the pin is switched to output.
  *
  * @param context
  * @return scpi_result_t
@@ -124,38 +105,10 @@ scpi_result_t SCPI_DigitalPinLevel(scpi_t* context);
 
 /**
  * [SOURce]:DIGital:PIN<n>[:LEVel]?
- * @brief This query returns actual logical level on the pin, for both input
- * and output pins.
+ * @brief This query returns actual level on the pin, for both input and
+ * output pins.
  *
  * @param context
  * @return scpi_result_t
  */
 scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context);
-
-/**
- * [SOURce]:DIGital:OUTPut:DATA {<Value>}
- * @brief Set up levels of all output pins at once, bit 0 corresponds to pin 1.
- * Bits of input and reserved pins are ignored.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_DigitalOutputData(scpi_t* context);
-
-/**
- * [SOURce]:DIGital:OUTPut:DATA?
- * @brief This query returns levels set on all output pins as a bit mask.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_DigitalOutputDataQ(scpi_t* context);
-
-/**
- * [SOURce]:DIGital:INPut:DATA?
- * @brief This query returns actual levels of all pins as a bit mask.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_DigitalInputDataQ(scpi_t* context);

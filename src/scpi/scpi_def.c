@@ -267,32 +267,12 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_DigitalPinPullQ,
      },
     {
-     .pattern  = "[SOURce]:DIGital:PIN#:POLarity",
-     .callback = SCPI_DigitalPinPolarity,
-     },
-    {
-     .pattern  = "[SOURce]:DIGital:PIN#:POLarity?",
-     .callback = SCPI_DigitalPinPolarityQ,
-     },
-    {
      .pattern  = "[SOURce]:DIGital:PIN#[:LEVel]",
      .callback = SCPI_DigitalPinLevel,
      },
     {
      .pattern  = "[SOURce]:DIGital:PIN#[:LEVel]?",
      .callback = SCPI_DigitalPinLevelQ,
-     },
-    {
-     .pattern  = "[SOURce]:DIGital:OUTPut:DATA",
-     .callback = SCPI_DigitalOutputData,
-     },
-    {
-     .pattern  = "[SOURce]:DIGital:OUTPut:DATA?",
-     .callback = SCPI_DigitalOutputDataQ,
-     },
-    {
-     .pattern  = "[SOURce]:DIGital:INPut:DATA?",
-     .callback = SCPI_DigitalInputDataQ,
      },
 
     SCPI_CMD_LIST_END

@@ -27,15 +27,14 @@ typedef struct
 
 /**
  * Current configuration of a GPIO of the external connector. The level is the
- * logical output level requested by digital_gpio_level_set(), it is kept for
- * an input pin as well and is driven when the pin becomes an output.
+ * output level requested by digital_gpio_level_set(), it is kept for an input
+ * pin as well and is driven when the pin becomes an output.
  */
 typedef struct
 {
     DigitalDirection direction;
     DigitalMode      mode;
     DigitalPull      pull;
-    DigitalPolarity  polarity;
     bool             level;
 } DigitalPinCfg;
 
@@ -74,23 +73,20 @@ static bool digital_pin_index(uint32_t pin, uint32_t* index)
 }
 
 /**
- * @brief Drive the physical level of a pin matching a logical level.
+ * @brief Drive the level of a pin.
  *
  * Has no effect on the pin while it is an input, the output register keeps
  * the level until the pin is switched to output.
  *
  * @param index Index of the pin.
- * @param level Logical level to drive.
+ * @param level Level to drive.
  */
 static void digital_pin_drive(uint32_t index, bool level)
 {
-    const bool inverted = pin_cfg[index].polarity == DIGITAL_POLARITY_INVERTED;
-    const bool physical = inverted ? !level : level;
-
     HAL_GPIO_WritePin(
         PIN_HW[index].port,
         PIN_HW[index].mask,
-        physical ? GPIO_PIN_SET : GPIO_PIN_RESET
+        level ? GPIO_PIN_SET : GPIO_PIN_RESET
     );
 }
 
@@ -153,7 +149,6 @@ void digital_gpio_reset(void)
         pin_cfg[index].direction = DIGITAL_DIRECTION_INPUT;
         pin_cfg[index].mode      = DIGITAL_MODE_PUSHPULL;
         pin_cfg[index].pull      = DIGITAL_PULL_NONE;
-        pin_cfg[index].polarity  = DIGITAL_POLARITY_NORMAL;
         pin_cfg[index].level     = false;
 
         digital_pin_apply(index);
@@ -223,30 +218,6 @@ DigitalPull digital_gpio_pull_get(uint32_t pin)
     return pin_cfg[index].pull;
 }
 
-void digital_gpio_polarity_set(uint32_t pin, DigitalPolarity polarity)
-{
-    uint32_t index = 0;
-    if (!digital_pin_index(pin, &index)) {
-        return;
-    }
-
-    pin_cfg[index].polarity = polarity;
-
-    // The logical level of the pin is kept, the physical one follows the new
-    // polarity
-    digital_pin_drive(index, pin_cfg[index].level);
-}
-
-DigitalPolarity digital_gpio_polarity_get(uint32_t pin)
-{
-    uint32_t index = 0;
-    if (!digital_pin_index(pin, &index)) {
-        return DIGITAL_POLARITY_NORMAL;
-    }
-
-    return pin_cfg[index].polarity;
-}
-
 void digital_gpio_level_set(uint32_t pin, bool level)
 {
     uint32_t index = 0;
@@ -265,54 +236,6 @@ bool digital_gpio_level_get(uint32_t pin)
         return false;
     }
 
-    const bool physical =
-        HAL_GPIO_ReadPin(PIN_HW[index].port, PIN_HW[index].mask) ==
-        GPIO_PIN_SET;
-    const bool inverted = pin_cfg[index].polarity == DIGITAL_POLARITY_INVERTED;
-
-    return inverted ? !physical : physical;
-}
-
-void digital_gpio_output_data_set(uint32_t mask)
-{
-    for (uint32_t index = 0; index < DIGITAL_PIN_COUNT; index++) {
-        if (pin_cfg[index].direction != DIGITAL_DIRECTION_OUTPUT) {
-            continue;
-        }
-
-        const bool level = (mask & (1UL << index)) != 0;
-
-        pin_cfg[index].level = level;
-        digital_pin_drive(index, level);
-    }
-}
-
-uint32_t digital_gpio_output_data_get(void)
-{
-    uint32_t mask = 0;
-
-    for (uint32_t index = 0; index < DIGITAL_PIN_COUNT; index++) {
-        if (pin_cfg[index].direction != DIGITAL_DIRECTION_OUTPUT) {
-            continue;
-        }
-
-        if (pin_cfg[index].level) {
-            mask |= 1UL << index;
-        }
-    }
-
-    return mask;
-}
-
-uint32_t digital_gpio_input_data_get(void)
-{
-    uint32_t mask = 0;
-
-    for (uint32_t index = 0; index < DIGITAL_PIN_COUNT; index++) {
-        if (digital_gpio_level_get(index + 1)) {
-            mask |= 1UL << index;
-        }
-    }
-
-    return mask;
+    return HAL_GPIO_ReadPin(PIN_HW[index].port, PIN_HW[index].mask) ==
+           GPIO_PIN_SET;
 }

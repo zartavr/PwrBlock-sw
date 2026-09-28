@@ -46,18 +46,11 @@ static const scpi_choice_def_t PULL_CHOICES[] = {
     SCPI_CHOICE_LIST_END
 };
 
-static const scpi_choice_def_t POLARITY_CHOICES[] = {
-    {"NORMal",   DIGITAL_POLARITY_NORMAL  },
-    {"INVerted", DIGITAL_POLARITY_INVERTED},
-    SCPI_CHOICE_LIST_END
-};
-
 // Short forms of the enumerated values, used to answer a query
 static const char* const FUNCTION_NAMES[]  = {"GPIO"};
 static const char* const DIRECTION_NAMES[] = {"INP", "OUTP"};
 static const char* const MODE_NAMES[]      = {"PUSH", "ODR"};
 static const char* const PULL_NAMES[]      = {"NONE", "UP", "DOWN"};
-static const char* const POLARITY_NAMES[]  = {"NORM", "INV"};
 
 /**
  * @brief Decode <n> suffix of the PIN<n> header into a pin number.
@@ -234,35 +227,6 @@ scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context)
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_DigitalPinPolarity(scpi_t* context)
-{
-    int32_t pin   = 0;
-    int32_t value = 0;
-    if (!digital_pin_choice_decode(context, POLARITY_CHOICES, &pin, &value)) {
-        return SCPI_RES_ERR;
-    }
-
-    printf("DIG:PIN%ld:POL %s\r\n", (long)pin, POLARITY_NAMES[value]);
-
-    digital_gpio_polarity_set((uint32_t)pin, (DigitalPolarity)value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinPolarityQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    printf("DIG:PIN%ld:POL?\r\n", (long)pin);
-
-    const DigitalPolarity polarity = digital_gpio_polarity_get((uint32_t)pin);
-
-    digital_name_result(context, POLARITY_NAMES, (int32_t)polarity);
-    return SCPI_RES_OK;
-}
-
 scpi_result_t SCPI_DigitalPinLevel(scpi_t* context)
 {
     int32_t pin = 0;
@@ -293,38 +257,5 @@ scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
     printf("DIG:PIN%ld:LEV?\r\n", (long)pin);
 
     SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalOutputData(scpi_t* context)
-{
-    uint32_t mask = 0;
-
-    // Read first parameter if present, decimal or non-decimal
-    if (!SCPI_ParamUInt32(context, &mask, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    printf("DIG:OUTP:DATA %lu\r\n", (unsigned long)mask);
-
-    // Bits above the pin count have no pin behind them and are ignored, the
-    // same way as the bits of input pins
-    digital_gpio_output_data_set(mask & DIGITAL_PIN_MASK);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalOutputDataQ(scpi_t* context)
-{
-    printf("DIG:OUTP:DATA?\r\n");
-
-    SCPI_ResultUInt32(context, digital_gpio_output_data_get());
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalInputDataQ(scpi_t* context)
-{
-    printf("DIG:INP:DATA?\r\n");
-
-    SCPI_ResultUInt32(context, digital_gpio_input_data_get());
     return SCPI_RES_OK;
 }
