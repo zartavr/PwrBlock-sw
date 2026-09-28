@@ -44,13 +44,13 @@ typedef struct
  * GPIO8 net.
  */
 static const DigitalPinHw PIN_HW[DIGITAL_PIN_COUNT] = {
-    {GPIOD, GPIO_PIN_0}, // IO1
-    {GPIOD, GPIO_PIN_1}, // IO2
-    {GPIOD, GPIO_PIN_2}, // IO3
-    {GPIOD, GPIO_PIN_3}, // IO4
-    {GPIOC, GPIO_PIN_6}, // IO5
-    {GPIOC, GPIO_PIN_7}, // IO6
-    {GPIOA, GPIO_PIN_3}, // IO7
+    {GPIOD, GPIO_PIN_0 }, // IO1
+    {GPIOD, GPIO_PIN_1 }, // IO2
+    {GPIOD, GPIO_PIN_2 }, // IO3
+    {GPIOD, GPIO_PIN_3 }, // IO4
+    {GPIOC, GPIO_PIN_6 }, // IO5
+    {GPIOC, GPIO_PIN_7 }, // IO6
+    {GPIOC, GPIO_PIN_13}, // IO7
 };
 
 static DigitalPinCfg pin_cfg[DIGITAL_PIN_COUNT];
@@ -136,8 +136,6 @@ static void digital_pin_apply(uint32_t index)
 
 void digital_gpio_init(void)
 {
-    // IO1 - IO4 live on GPIOD, which is not enabled by the generated setup
-    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
 

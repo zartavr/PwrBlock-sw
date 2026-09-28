@@ -70,6 +70,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define IO7_Pin                GPIO_PIN_13
+#define IO7_GPIO_Port          GPIOC
 #define VUSB_PWR_ADC_Pin       GPIO_PIN_0
 #define VUSB_PWR_ADC_GPIO_Port GPIOA
 #define VUSB_PC_ADC_Pin        GPIO_PIN_1
@@ -104,6 +106,10 @@ void Error_Handler(void);
 #define UCPD1_CC1_GPIO_Port    GPIOA
 #define I2C1_SCL_Pin           GPIO_PIN_9
 #define I2C1_SCL_GPIO_Port     GPIOA
+#define IO6_Pin                GPIO_PIN_6
+#define IO6_GPIO_Port          GPIOC
+#define IO5_Pin                GPIO_PIN_7
+#define IO5_GPIO_Port          GPIOC
 #define I2C1_SDA_Pin           GPIO_PIN_10
 #define I2C1_SDA_GPIO_Port     GPIOA
 #define USBFS_DM_Pin           GPIO_PIN_11
@@ -112,6 +118,14 @@ void Error_Handler(void);
 #define USBFS_DP_GPIO_Port     GPIOA
 #define INA_SPI_NSS_Pin        GPIO_PIN_15
 #define INA_SPI_NSS_GPIO_Port  GPIOA
+#define IO1_Pin                GPIO_PIN_0
+#define IO1_GPIO_Port          GPIOD
+#define IO2_Pin                GPIO_PIN_1
+#define IO2_GPIO_Port          GPIOD
+#define IO3_Pin                GPIO_PIN_2
+#define IO3_GPIO_Port          GPIOD
+#define IO4_Pin                GPIO_PIN_3
+#define IO4_GPIO_Port          GPIOD
 #define INA_SPI_SCK_Pin        GPIO_PIN_3
 #define INA_SPI_SCK_GPIO_Port  GPIOB
 #define I2C2_SDA_Pin           GPIO_PIN_4

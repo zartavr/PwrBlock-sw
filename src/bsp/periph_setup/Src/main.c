@@ -681,6 +681,7 @@ static void MX_GPIO_Init(void)
     __HAL_RCC_GPIOF_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(LM_EN_GPIO_Port, LM_EN_Pin, GPIO_PIN_RESET);
@@ -690,6 +691,12 @@ static void MX_GPIO_Init(void)
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOB, USB_SW1_Pin | USB_SW2_Pin, GPIO_PIN_SET);
+
+    /*Configure GPIO pins : IO7_Pin IO6_Pin IO5_Pin */
+    GPIO_InitStruct.Pin  = IO7_Pin | IO6_Pin | IO5_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     /*Configure GPIO pin : BUTTON_Pin */
     GPIO_InitStruct.Pin  = BUTTON_Pin;
@@ -722,6 +729,12 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     HAL_GPIO_Init(INA_SPI_NSS_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : IO1_Pin IO2_Pin IO3_Pin IO4_Pin */
+    GPIO_InitStruct.Pin  = IO1_Pin | IO2_Pin | IO3_Pin | IO4_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
     /*Configure GPIO pin : DTRK_PWM_Pin */
     GPIO_InitStruct.Pin       = DTRK_PWM_Pin;
