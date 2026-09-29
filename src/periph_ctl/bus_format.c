@@ -19,7 +19,7 @@
 #include <string.h>
 
 /// Response format applied on power-on and by *RST
-#define BUS_FORMAT_DEFAULT BUS_FORMAT_HEX
+#define BUS_FORMAT_DEFAULT BUS_FORMAT_INT
 
 // Parameter patterns, used to decode an enumerated value of a command
 static const scpi_choice_def_t FORMAT_CHOICES[] = {
@@ -118,18 +118,25 @@ static void bus_byte_result_hex(scpi_t* context, uint8_t value)
 
 void bus_data_result(scpi_t* context, const uint8_t* data, uint32_t len)
 {
-    if (format == BUS_FORMAT_INT) {
-        SCPI_ResultArbitraryBlock(context, data, len);
-        return;
-    }
-
-    // Separating commas are emitted by the parser itself
-    for (uint32_t index = 0; index < len; index++) {
-        if (format == BUS_FORMAT_HEX) {
-            bus_byte_result_hex(context, data[index]);
+    switch (format) {
+        case BUS_FORMAT_ASCII: {
+            SCPI_ResultArrayUInt8(context, data, len, SCPI_FORMAT_ASCII);
+            break;
         }
-        else {
-            SCPI_ResultUInt32(context, data[index]);
+        case BUS_FORMAT_INT: {
+            // Bytes have no byte order, so the block is the same in any of
+            // the binary formats of the parser
+            SCPI_ResultArrayUInt8(context, data, len, SCPI_FORMAT_NORMAL);
+            break;
+        }
+        case BUS_FORMAT_HEX:
+        default: {
+            // The parser has no hexadecimal array, the bytes are written one
+            // by one and the separating commas are emitted by the parser
+            for (uint32_t index = 0; index < len; index++) {
+                bus_byte_result_hex(context, data[index]);
+            }
+            break;
         }
     }
 }
