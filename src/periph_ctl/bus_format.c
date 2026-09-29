@@ -99,7 +99,13 @@ scpi_bool_t bus_data_param(
     return TRUE;
 }
 
-void bus_byte_result_hex(scpi_t* context, uint8_t value)
+/**
+ * @brief Append a byte to a reply as a pair of hexadecimal digits, "#H01".
+ *
+ * @param context
+ * @param value Byte to reply.
+ */
+static void bus_byte_result_hex(scpi_t* context, uint8_t value)
 {
     static const char DIGITS[] = "0123456789ABCDEF";
 

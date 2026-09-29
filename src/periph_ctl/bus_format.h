@@ -69,17 +69,6 @@ scpi_bool_t bus_data_param(
 void bus_data_result(scpi_t* context, const uint8_t* data, uint32_t len);
 
 /**
- * @brief Append a byte to a reply as a pair of hexadecimal digits, "#H01".
- *
- * Used by the replies that are hexadecimal regardless of the response format,
- * like a list of the addresses found on a bus.
- *
- * @param context
- * @param value Byte to reply.
- */
-void bus_byte_result_hex(scpi_t* context, uint8_t value);
-
-/**
  * @brief Restore the power-on default of the response format.
  *
  * Wraps bus_format_reset() so that callers outside the periph_ctl backend,

@@ -24,9 +24,6 @@
 /// characters of it in the hexadecimal response format.
 #define I2C_BUS_XFER_MAX_LEN 32
 
-/// Maximum number of slave addresses reported by a scan of the bus
-#define I2C_BUS_SCAN_MAX_FOUND 16
-
 /// Maximum length of the write phase of a combined transfer. The blocking HAL
 /// carries the phase in the memory address of a read, which is 8 or 16 bits.
 #define I2C_BUS_PREFIX_MAX_LEN 2
@@ -230,18 +227,6 @@ I2cBusStatus i2c_bus_read(uint8_t* dst, uint32_t count);
 I2cBusStatus i2c_bus_transfer(
     const uint8_t* prefix, uint32_t prefix_len, uint8_t* dst, uint32_t count
 );
-
-/**
- * @brief Scan the bus for slaves that acknowledge their address.
- *
- * Supported for a 7 bit address only.
- *
- * @param found Destination of the addresses that answered.
- * @param max Capacity of found.
- * @param count Number of addresses that answered.
- * @return I2cBusStatus I2C_BUS_ERR_PARAM for a 10 bit address.
- */
-I2cBusStatus i2c_bus_scan(uint8_t* found, uint32_t max, uint32_t* count);
 
 /**
  * @brief Recover the bus: generate up to nine clock pulses followed by a STOP
