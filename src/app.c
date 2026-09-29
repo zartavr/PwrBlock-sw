@@ -18,6 +18,7 @@
 #include "middleware/adc_mgr/adc_mgr.h"
 #include "middleware/i2c_mgr/i2c_mgr.h"
 #include "periph_ctl/digital_gpio.h"
+#include "periph_ctl/i2c_bus.h"
 #include "threads/threads.h"
 
 int app(void)
@@ -25,6 +26,7 @@ int app(void)
     i2c_manager_init();
     adc_manager_init();
     digital_gpio_init();
+    i2c_bus_init();
 
     thread_usbpd_init();
     thread_usbtmc_init();
