@@ -313,14 +313,6 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_I2cPullupQ,
      },
     {
-     .pattern  = "BUS:I2C:TIMEout",
-     .callback = SCPI_I2cTimeout,
-     },
-    {
-     .pattern  = "BUS:I2C:TIMEout?",
-     .callback = SCPI_I2cTimeoutQ,
-     },
-    {
      .pattern  = "BUS:I2C:WRITe",
      .callback = SCPI_I2cWrite,
      },

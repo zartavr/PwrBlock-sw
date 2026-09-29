@@ -85,26 +85,6 @@ scpi_result_t SCPI_I2cPullup(scpi_t* context);
 scpi_result_t SCPI_I2cPullupQ(scpi_t* context);
 
 /**
- * BUS:I2C:TIMEout {<Timeout>}
- * @brief Set up timeout of a transaction in milliseconds, including a clock
- * stretched by the slave. Default is 100.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cTimeout(scpi_t* context);
-
-/**
- * BUS:I2C:TIMEout? [MIN | MAX]
- * @brief This query returns the timeout of a transaction, or the allowed
- * minimum or maximum value.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cTimeoutQ(scpi_t* context);
-
-/**
  * BUS:I2C:WRITe {<Address>},{<Data>}
  * @brief Write data to the slave: START, address + W, data, STOP.
  *

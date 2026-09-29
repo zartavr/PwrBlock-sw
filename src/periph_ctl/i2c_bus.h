@@ -49,9 +49,9 @@ typedef enum
  * before the SCPI parser starts to serve BUS:I2C commands.
  *
  * The transfers of this module block the calling thread until they complete
- * or the transaction timeout expires, and its configuration calls do a
- * read-modify-write of the peripheral, so all of them are expected to be
- * called from a single thread, the one running the SCPI parser.
+ * or a fixed transaction timeout of 100 ms expires, and its configuration
+ * calls do a read-modify-write of the peripheral, so all of them are expected
+ * to be called from a single thread, the one running the SCPI parser.
  */
 void i2c_bus_init(void);
 
@@ -109,20 +109,6 @@ I2cBusStatus i2c_bus_pullup_set(bool enabled);
  * @return false The resistors are disconnected.
  */
 bool i2c_bus_pullup_get(void);
-
-/**
- * @brief Set timeout of a transaction, including a clock stretched by a slave.
- *
- * @param ms Value in milliseconds, clamped to the supported range.
- */
-void i2c_bus_timeout_set(uint32_t ms);
-
-/**
- * @brief Get timeout of a transaction.
- *
- * @return uint32_t Value in milliseconds.
- */
-uint32_t i2c_bus_timeout_get(void);
 
 /**
  * @brief Write data to a slave: START, address + W, data, STOP.

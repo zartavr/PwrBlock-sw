@@ -18,7 +18,6 @@
 
 #include "bus_format.h"
 #include "i2c_bus.h"
-#include "i2c_bus_def.h"
 
 /// Widths of the slave address accepted by BUS:I2C:ADDRess:WIDTh
 #define I2C_CTL_WIDTH_7BIT  7
@@ -117,45 +116,6 @@ static scpi_bool_t i2c_count_param(scpi_t* context, uint32_t* count)
     return TRUE;
 }
 
-/**
- * @brief Answer a query with a value, or with the min or max of it.
- *
- * @param context
- * @param value Current value.
- * @param min Allowed minimum value.
- * @param max Allowed maximum value.
- * @return scpi_result_t
- */
-static scpi_result_t i2c_limit_result(
-    scpi_t* context, uint32_t value, uint32_t min, uint32_t max
-)
-{
-    uint32_t reply = value;
-
-    // Read first parameter if present: map to scpi_special_numbers_def
-    scpi_number_t par;
-    if (SCPI_ParamNumber(context, scpi_special_numbers_def, &par, FALSE)) {
-        // Select by special number descriptor
-        switch (par.content.tag) {
-            case SCPI_NUM_MIN: {
-                reply = min;
-                break;
-            }
-            case SCPI_NUM_MAX: {
-                reply = max;
-                break;
-            }
-            default: {
-                SCPI_ErrorPush(context, SCPI_ERROR_ILLEGAL_PARAMETER_VALUE);
-                return SCPI_RES_ERR;
-            }
-        }
-    }
-
-    SCPI_ResultUInt32(context, reply);
-    return SCPI_RES_OK;
-}
-
 scpi_result_t SCPI_I2cReset(scpi_t* context)
 {
     (void)context;
@@ -230,34 +190,6 @@ scpi_result_t SCPI_I2cPullupQ(scpi_t* context)
 {
     SCPI_ResultBool(context, i2c_bus_pullup_get());
     return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_I2cTimeout(scpi_t* context)
-{
-    uint32_t value = 0;
-
-    // Read first parameter if present
-    if (!SCPI_ParamUInt32(context, &value, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    if (value < I2C_BUS_TIMEOUT_MIN || value > I2C_BUS_TIMEOUT_MAX) {
-        SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
-        return SCPI_RES_ERR;
-    }
-
-    i2c_bus_timeout_set(value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_I2cTimeoutQ(scpi_t* context)
-{
-    return i2c_limit_result(
-        context,
-        i2c_bus_timeout_get(),
-        I2C_BUS_TIMEOUT_MIN,
-        I2C_BUS_TIMEOUT_MAX
-    );
 }
 
 scpi_result_t SCPI_I2cWrite(scpi_t* context)

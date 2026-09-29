@@ -20,8 +20,10 @@
 
 #include <stm32g0xx_hal.h>
 
-/// Default applied on power-on and by *RST
-#define I2C_BUS_TIMEOUT_DEFAULT 100
+/// Timeout of a transaction in milliseconds, including a clock stretched by a
+/// slave. The commands are served from the USB device task, so it also bounds
+/// how long an unresponsive slave can delay the answer to any other command.
+#define I2C_BUS_TIMEOUT_MS 100
 
 /**
  * TIMINGR value of the peripheral, the clock of the bus is fixed at 100 kHz.
@@ -51,7 +53,6 @@ typedef struct
     bool            enabled;
     I2cBusAddrWidth width;
     bool            pullup;
-    uint32_t        timeout_ms;
 } I2cBusCfg;
 
 extern I2C_HandleTypeDef hi2c2;
@@ -202,7 +203,6 @@ void i2c_bus_reset(void)
     cfg.enabled    = false;
     cfg.width      = I2C_BUS_WIDTH_7BIT;
     cfg.pullup     = false;
-    cfg.timeout_ms = I2C_BUS_TIMEOUT_DEFAULT;
 
     // The peripheral is brought up by the setup of the board, so a disabled
     // bus has to be released rather than just left alone
@@ -264,23 +264,6 @@ bool i2c_bus_pullup_get(void)
     return cfg.pullup;
 }
 
-void i2c_bus_timeout_set(uint32_t ms)
-{
-    if (ms < I2C_BUS_TIMEOUT_MIN) {
-        ms = I2C_BUS_TIMEOUT_MIN;
-    }
-    else if (ms > I2C_BUS_TIMEOUT_MAX) {
-        ms = I2C_BUS_TIMEOUT_MAX;
-    }
-
-    cfg.timeout_ms = ms;
-}
-
-uint32_t i2c_bus_timeout_get(void)
-{
-    return cfg.timeout_ms;
-}
-
 I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)
 {
     if (!cfg.enabled) {
@@ -300,7 +283,7 @@ I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)
         i2c_bus_dev_addr(addr),
         (uint8_t*)data,
         (uint16_t)len,
-        cfg.timeout_ms
+        I2C_BUS_TIMEOUT_MS
     );
 
     return i2c_bus_status(status);
@@ -321,7 +304,7 @@ I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count)
     }
 
     const HAL_StatusTypeDef status = HAL_I2C_Master_Receive(
-        &hi2c2, i2c_bus_dev_addr(addr), dst, (uint16_t)count, cfg.timeout_ms
+        &hi2c2, i2c_bus_dev_addr(addr), dst, (uint16_t)count, I2C_BUS_TIMEOUT_MS
     );
 
     return i2c_bus_status(status);
