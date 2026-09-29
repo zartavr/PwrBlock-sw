@@ -297,14 +297,6 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_I2cStateQ,
      },
     {
-     .pattern  = "BUS:I2C:ADDRess",
-     .callback = SCPI_I2cAddress,
-     },
-    {
-     .pattern  = "BUS:I2C:ADDRess?",
-     .callback = SCPI_I2cAddressQ,
-     },
-    {
      .pattern  = "BUS:I2C:ADDRess:WIDTh",
      .callback = SCPI_I2cAddressWidth,
      },
@@ -335,10 +327,6 @@ const scpi_command_t scpi_commands[] = {
     {
      .pattern  = "BUS:I2C:READ?",
      .callback = SCPI_I2cReadQ,
-     },
-    {
-     .pattern  = "BUS:I2C:TRANsfer?",
-     .callback = SCPI_I2cTransferQ,
      },
 
     SCPI_CMD_LIST_END

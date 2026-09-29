@@ -49,7 +49,6 @@
 typedef struct
 {
     bool            enabled;
-    uint32_t        addr;
     I2cBusAddrWidth width;
     bool            pullup;
     uint32_t        timeout_ms;
@@ -60,20 +59,35 @@ extern I2C_HandleTypeDef hi2c2;
 static I2cBusCfg cfg;
 
 /**
- * @brief Get the address of the slave in the form expected by the HAL.
+ * @brief Get max address of the slave allowed by the current width.
+ *
+ * @return uint32_t Unshifted address of the slave.
+ */
+static uint32_t i2c_bus_addr_max(void)
+{
+    if (cfg.width == I2C_BUS_WIDTH_10BIT) {
+        return I2C_BUS_ADDR_MAX_10BIT;
+    }
+
+    return I2C_BUS_ADDR_MAX_7BIT;
+}
+
+/**
+ * @brief Get the address of a slave in the form expected by the HAL.
  *
  * A 7 bit address sits in SADD[7:1] of the peripheral, so it is shifted, a
  * 10 bit one fills SADD[9:0] and is passed as it is.
  *
+ * @param addr Unshifted address of the slave.
  * @return uint16_t Address of the slave.
  */
-static uint16_t i2c_bus_dev_addr(void)
+static uint16_t i2c_bus_dev_addr(uint32_t addr)
 {
     if (cfg.width == I2C_BUS_WIDTH_10BIT) {
-        return (uint16_t)cfg.addr;
+        return (uint16_t)addr;
     }
 
-    return (uint16_t)(cfg.addr << 1);
+    return (uint16_t)(addr << 1);
 }
 
 /**
@@ -186,7 +200,6 @@ void i2c_bus_init(void)
 void i2c_bus_reset(void)
 {
     cfg.enabled    = false;
-    cfg.addr       = 0;
     cfg.width      = I2C_BUS_WIDTH_7BIT;
     cfg.pullup     = false;
     cfg.timeout_ms = I2C_BUS_TIMEOUT_DEFAULT;
@@ -223,42 +236,9 @@ bool i2c_bus_state_get(void)
     return cfg.enabled;
 }
 
-/**
- * @brief Get max address of the slave allowed by the current width.
- *
- * @return uint32_t Unshifted address of the slave.
- */
-static uint32_t i2c_bus_addr_max(void)
-{
-    if (cfg.width == I2C_BUS_WIDTH_10BIT) {
-        return I2C_BUS_ADDR_MAX_10BIT;
-    }
-
-    return I2C_BUS_ADDR_MAX_7BIT;
-}
-
-void i2c_bus_addr_set(uint32_t addr)
-{
-    if (addr > i2c_bus_addr_max()) {
-        return;
-    }
-
-    cfg.addr = addr;
-}
-
-uint32_t i2c_bus_addr_get(void)
-{
-    return cfg.addr;
-}
-
 I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
 {
     cfg.width = width;
-
-    // A narrower address cannot keep a value of the wider one
-    if (cfg.addr > i2c_bus_addr_max()) {
-        cfg.addr = 0;
-    }
 
     return i2c_bus_refresh();
 }
@@ -301,10 +281,14 @@ uint32_t i2c_bus_timeout_get(void)
     return cfg.timeout_ms;
 }
 
-I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len)
+I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)
 {
     if (!cfg.enabled) {
         return I2C_BUS_ERR_DISABLED;
+    }
+
+    if (addr > i2c_bus_addr_max()) {
+        return I2C_BUS_ERR_PARAM;
     }
 
     if (len == 0 || len > I2C_BUS_XFER_MAX_LEN) {
@@ -313,7 +297,7 @@ I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len)
 
     const HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(
         &hi2c2,
-        i2c_bus_dev_addr(),
+        i2c_bus_dev_addr(addr),
         (uint8_t*)data,
         (uint16_t)len,
         cfg.timeout_ms
@@ -322,10 +306,14 @@ I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len)
     return i2c_bus_status(status);
 }
 
-I2cBusStatus i2c_bus_read(uint8_t* dst, uint32_t count)
+I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count)
 {
     if (!cfg.enabled) {
         return I2C_BUS_ERR_DISABLED;
+    }
+
+    if (addr > i2c_bus_addr_max()) {
+        return I2C_BUS_ERR_PARAM;
     }
 
     if (count == 0 || count > I2C_BUS_XFER_MAX_LEN) {
@@ -333,46 +321,7 @@ I2cBusStatus i2c_bus_read(uint8_t* dst, uint32_t count)
     }
 
     const HAL_StatusTypeDef status = HAL_I2C_Master_Receive(
-        &hi2c2, i2c_bus_dev_addr(), dst, (uint16_t)count, cfg.timeout_ms
-    );
-
-    return i2c_bus_status(status);
-}
-
-I2cBusStatus i2c_bus_transfer(
-    const uint8_t* prefix, uint32_t prefix_len, uint8_t* dst, uint32_t count
-)
-{
-    if (!cfg.enabled) {
-        return I2C_BUS_ERR_DISABLED;
-    }
-
-    if (count == 0 || count > I2C_BUS_XFER_MAX_LEN) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    if (prefix_len == 0 || prefix_len > I2C_BUS_PREFIX_MAX_LEN) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    // The blocking HAL carries the write phase of a repeated start in the
-    // memory address of a read, the first byte goes on the wire first
-    uint16_t mem_addr = prefix[0];
-    uint16_t mem_size = I2C_MEMADD_SIZE_8BIT;
-
-    if (prefix_len == 2) {
-        mem_addr = (uint16_t)((prefix[0] << 8) | prefix[1]);
-        mem_size = I2C_MEMADD_SIZE_16BIT;
-    }
-
-    const HAL_StatusTypeDef status = HAL_I2C_Mem_Read(
-        &hi2c2,
-        i2c_bus_dev_addr(),
-        mem_addr,
-        mem_size,
-        dst,
-        (uint16_t)count,
-        cfg.timeout_ms
+        &hi2c2, i2c_bus_dev_addr(addr), dst, (uint16_t)count, cfg.timeout_ms
     );
 
     return i2c_bus_status(status);

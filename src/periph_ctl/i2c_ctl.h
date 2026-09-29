@@ -48,24 +48,6 @@ scpi_result_t SCPI_I2cState(scpi_t* context);
 scpi_result_t SCPI_I2cStateQ(scpi_t* context);
 
 /**
- * BUS:I2C:ADDRess {<Address>}
- * @brief Set up the unshifted address of the slave. Default is 0.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cAddress(scpi_t* context);
-
-/**
- * BUS:I2C:ADDRess?
- * @brief This query returns the unshifted address of the slave.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cAddressQ(scpi_t* context);
-
-/**
  * BUS:I2C:ADDRess:WIDTh {7 | 10}
  * @brief Set up width of the slave address in bits. Default is 7.
  *
@@ -123,7 +105,7 @@ scpi_result_t SCPI_I2cTimeout(scpi_t* context);
 scpi_result_t SCPI_I2cTimeoutQ(scpi_t* context);
 
 /**
- * BUS:I2C:WRITe {<Data>}
+ * BUS:I2C:WRITe {<Address>},{<Data>}
  * @brief Write data to the slave: START, address + W, data, STOP.
  *
  * @param context
@@ -132,20 +114,10 @@ scpi_result_t SCPI_I2cTimeoutQ(scpi_t* context);
 scpi_result_t SCPI_I2cWrite(scpi_t* context);
 
 /**
- * BUS:I2C:READ? {<Count>}
+ * BUS:I2C:READ? {<Address>},{<Count>}
  * @brief Read Count bytes from the slave: START, address + R, data, STOP.
  *
  * @param context
  * @return scpi_result_t
  */
 scpi_result_t SCPI_I2cReadQ(scpi_t* context);
-
-/**
- * BUS:I2C:TRANsfer? {<Count>},{<Data>}
- * @brief Write data to the slave, then read Count bytes in the same
- * transaction using a repeated START.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cTransferQ(scpi_t* context);
