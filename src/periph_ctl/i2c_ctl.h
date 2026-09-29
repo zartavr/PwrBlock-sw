@@ -48,26 +48,6 @@ scpi_result_t SCPI_I2cState(scpi_t* context);
 scpi_result_t SCPI_I2cStateQ(scpi_t* context);
 
 /**
- * BUS:I2C:FREQuency {<Frequency>}
- * @brief Set up frequency of the clock in hertz. Only the supported discrete
- * values are accepted. Default is 100000.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cFrequency(scpi_t* context);
-
-/**
- * BUS:I2C:FREQuency? [MIN | MAX]
- * @brief This query returns the frequency of the clock, or the allowed
- * minimum or maximum value.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cFrequencyQ(scpi_t* context);
-
-/**
  * BUS:I2C:ADDRess {<Address>}
  * @brief Set up the unshifted address of the slave. Default is 0.
  *
