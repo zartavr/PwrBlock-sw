@@ -174,24 +174,6 @@ scpi_result_t SCPI_I2cAddressWidthQ(scpi_t* context)
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_I2cPullup(scpi_t* context)
-{
-    bool state = false;
-
-    // Read first parameter if present
-    if (!SCPI_ParamBool(context, &state, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    return i2c_status_result(context, i2c_bus_pullup_set(state));
-}
-
-scpi_result_t SCPI_I2cPullupQ(scpi_t* context)
-{
-    SCPI_ResultBool(context, i2c_bus_pullup_get());
-    return SCPI_RES_OK;
-}
-
 scpi_result_t SCPI_I2cWrite(scpi_t* context)
 {
     if (!i2c_enabled_check(context)) {

@@ -66,25 +66,6 @@ scpi_result_t SCPI_I2cAddressWidth(scpi_t* context);
 scpi_result_t SCPI_I2cAddressWidthQ(scpi_t* context);
 
 /**
- * BUS:I2C:PULLup {OFF | ON | 0 | 1}
- * @brief Enable and disable the internal pull-up resistors of SDA and SCL.
- * Default is OFF.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cPullup(scpi_t* context);
-
-/**
- * BUS:I2C:PULLup?
- * @brief This query returns state of the internal pull-up resistors.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cPullupQ(scpi_t* context);
-
-/**
  * BUS:I2C:WRITe {<Address>},{<Data>}
  * @brief Write data to the slave: START, address + W, data, STOP.
  *
