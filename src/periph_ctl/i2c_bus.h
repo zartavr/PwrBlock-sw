@@ -227,13 +227,3 @@ I2cBusStatus i2c_bus_read(uint8_t* dst, uint32_t count);
 I2cBusStatus i2c_bus_transfer(
     const uint8_t* prefix, uint32_t prefix_len, uint8_t* dst, uint32_t count
 );
-
-/**
- * @brief Recover the bus: generate up to nine clock pulses followed by a STOP
- * to release SDA held low by a slave.
- *
- * Allowed while the bus is disabled, it is a recovery tool.
- *
- * @return I2cBusStatus Result of the recovery.
- */
-I2cBusStatus i2c_bus_recover(void);

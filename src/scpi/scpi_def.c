@@ -348,10 +348,6 @@ const scpi_command_t scpi_commands[] = {
      .pattern  = "BUS:I2C:TRANsfer?",
      .callback = SCPI_I2cTransferQ,
      },
-    {
-     .pattern  = "BUS:I2C:RECover",
-     .callback = SCPI_I2cRecover,
-     },
 
     SCPI_CMD_LIST_END
 };

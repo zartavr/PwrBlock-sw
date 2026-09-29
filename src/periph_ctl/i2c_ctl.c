@@ -376,8 +376,3 @@ scpi_result_t SCPI_I2cTransferQ(scpi_t* context)
     bus_data_result(context, rx_buffer, count);
     return SCPI_RES_OK;
 }
-
-scpi_result_t SCPI_I2cRecover(scpi_t* context)
-{
-    return i2c_status_result(context, i2c_bus_recover());
-}
