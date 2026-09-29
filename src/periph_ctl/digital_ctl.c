@@ -121,8 +121,6 @@ static void digital_name_result(
 
 scpi_result_t SCPI_DigitalCountQ(scpi_t* context)
 {
-    printf("DIG:COUN?\r\n");
-
     SCPI_ResultUInt32(context, DIGITAL_PIN_COUNT);
     return SCPI_RES_OK;
 }
@@ -133,8 +131,6 @@ scpi_result_t SCPI_DigitalPinFunctionQ(scpi_t* context)
     if (!digital_pin_decode(context, &pin)) {
         return SCPI_RES_ERR;
     }
-
-    printf("DIG:PIN%ld:FUNC?\r\n", (long)pin);
 
     digital_name_result(context, FUNCTION_NAMES, DIGITAL_FUNCTION_GPIO);
     return SCPI_RES_OK;
@@ -148,8 +144,6 @@ scpi_result_t SCPI_DigitalPinDirection(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    printf("DIG:PIN%ld:DIR %s\r\n", (long)pin, DIRECTION_NAMES[value]);
-
     digital_gpio_direction_set((uint32_t)pin, (DigitalDirection)value);
     return SCPI_RES_OK;
 }
@@ -160,8 +154,6 @@ scpi_result_t SCPI_DigitalPinDirectionQ(scpi_t* context)
     if (!digital_pin_decode(context, &pin)) {
         return SCPI_RES_ERR;
     }
-
-    printf("DIG:PIN%ld:DIR?\r\n", (long)pin);
 
     const DigitalDirection direction =
         digital_gpio_direction_get((uint32_t)pin);
@@ -178,8 +170,6 @@ scpi_result_t SCPI_DigitalPinMode(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    printf("DIG:PIN%ld:MODE %s\r\n", (long)pin, MODE_NAMES[value]);
-
     digital_gpio_mode_set((uint32_t)pin, (DigitalMode)value);
     return SCPI_RES_OK;
 }
@@ -190,8 +180,6 @@ scpi_result_t SCPI_DigitalPinModeQ(scpi_t* context)
     if (!digital_pin_decode(context, &pin)) {
         return SCPI_RES_ERR;
     }
-
-    printf("DIG:PIN%ld:MODE?\r\n", (long)pin);
 
     const DigitalMode mode = digital_gpio_mode_get((uint32_t)pin);
 
@@ -207,8 +195,6 @@ scpi_result_t SCPI_DigitalPinPull(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    printf("DIG:PIN%ld:PULL %s\r\n", (long)pin, PULL_NAMES[value]);
-
     digital_gpio_pull_set((uint32_t)pin, (DigitalPull)value);
     return SCPI_RES_OK;
 }
@@ -219,8 +205,6 @@ scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context)
     if (!digital_pin_decode(context, &pin)) {
         return SCPI_RES_ERR;
     }
-
-    printf("DIG:PIN%ld:PULL?\r\n", (long)pin);
 
     const DigitalPull pull = digital_gpio_pull_get((uint32_t)pin);
 
@@ -242,8 +226,6 @@ scpi_result_t SCPI_DigitalPinLevel(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    printf("DIG:PIN%ld:LEV %u\r\n", (long)pin, (unsigned)state);
-
     digital_gpio_level_set((uint32_t)pin, state);
     return SCPI_RES_OK;
 }
@@ -254,8 +236,6 @@ scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
     if (!digital_pin_decode(context, &pin)) {
         return SCPI_RES_ERR;
     }
-
-    printf("DIG:PIN%ld:LEV?\r\n", (long)pin);
 
     SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
     return SCPI_RES_OK;
