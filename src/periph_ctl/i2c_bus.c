@@ -16,19 +16,13 @@
 
 #include "i2c_bus.h"
 
+#include "i2c_bus_def.h"
+
 #include <stm32g0xx_hal.h>
 
 /// Defaults applied on power-on and by *RST
 #define I2C_BUS_FREQ_DEFAULT    100000
 #define I2C_BUS_TIMEOUT_DEFAULT 100
-
-/// Supported range of the transaction timeout in milliseconds
-#define I2C_BUS_TIMEOUT_MIN 1
-#define I2C_BUS_TIMEOUT_MAX 10000
-
-/// Max unshifted address of a slave, per width of the address
-#define I2C_BUS_ADDR_MAX_7BIT  0x7F
-#define I2C_BUS_ADDR_MAX_10BIT 0x3FF
 
 /**
  * Pins of the bus on the external connector, they are dedicated to it and are
@@ -74,9 +68,9 @@ typedef struct
  * hardware yet - check them on a scope before trusting the edges.
  */
 static const I2cBusSpeed SPEEDS[] = {
-    {10000,  0xC042F5F5}, // PRESC=0xC SCLDEL=4 SDADEL=2 SCLH=0xF5 SCLL=0xF5
+    {I2C_BUS_FREQ_MIN,  0xC042F5F5}, // PRESC=0xC SCLDEL=4 SDADEL=2 SCLH=0xF5 SCLL=0xF5
     {100000, 0x10B17DB5}, // PRESC=1   SCLDEL=B SDADEL=1 SCLH=0x7D SCLL=0xB5
-    {400000, 0x00924453}, // PRESC=0   SCLDEL=9 SDADEL=2 SCLH=0x44 SCLL=0x53
+    {I2C_BUS_FREQ_MAX, 0x00924453}, // PRESC=0   SCLDEL=9 SDADEL=2 SCLH=0x44 SCLL=0x53
 };
 
 #define I2C_BUS_SPEED_COUNT (sizeof(SPEEDS) / sizeof(SPEEDS[0]))
@@ -285,19 +279,23 @@ uint32_t i2c_bus_freq_get(void)
     return cfg.freq_hz;
 }
 
-uint32_t i2c_bus_freq_min_get(void)
+/**
+ * @brief Get max address of the slave allowed by the current width.
+ *
+ * @return uint32_t Unshifted address of the slave.
+ */
+static uint32_t i2c_bus_addr_max(void)
 {
-    return SPEEDS[0].hz;
-}
+    if (cfg.width == I2C_BUS_WIDTH_10BIT) {
+        return I2C_BUS_ADDR_MAX_10BIT;
+    }
 
-uint32_t i2c_bus_freq_max_get(void)
-{
-    return SPEEDS[I2C_BUS_SPEED_COUNT - 1].hz;
+    return I2C_BUS_ADDR_MAX_7BIT;
 }
 
 void i2c_bus_addr_set(uint32_t addr)
 {
-    if (addr > i2c_bus_addr_max_get()) {
+    if (addr > i2c_bus_addr_max()) {
         return;
     }
 
@@ -314,7 +312,7 @@ I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
     cfg.width = width;
 
     // A narrower address cannot keep a value of the wider one
-    if (cfg.addr > i2c_bus_addr_max_get()) {
+    if (cfg.addr > i2c_bus_addr_max()) {
         cfg.addr = 0;
     }
 
@@ -324,15 +322,6 @@ I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
 I2cBusAddrWidth i2c_bus_addr_width_get(void)
 {
     return cfg.width;
-}
-
-uint32_t i2c_bus_addr_max_get(void)
-{
-    if (cfg.width == I2C_BUS_WIDTH_10BIT) {
-        return I2C_BUS_ADDR_MAX_10BIT;
-    }
-
-    return I2C_BUS_ADDR_MAX_7BIT;
 }
 
 I2cBusStatus i2c_bus_pullup_set(bool enabled)
@@ -368,15 +357,6 @@ uint32_t i2c_bus_timeout_get(void)
     return cfg.timeout_ms;
 }
 
-uint32_t i2c_bus_timeout_min_get(void)
-{
-    return I2C_BUS_TIMEOUT_MIN;
-}
-
-uint32_t i2c_bus_timeout_max_get(void)
-{
-    return I2C_BUS_TIMEOUT_MAX;
-}
 
 I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len)
 {

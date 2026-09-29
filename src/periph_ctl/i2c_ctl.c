@@ -18,6 +18,7 @@
 
 #include "bus_format.h"
 #include "i2c_bus.h"
+#include "i2c_bus_def.h"
 
 /// Widths of the slave address accepted by BUS:I2C:ADDRess:WIDTh
 #define I2C_CTL_WIDTH_7BIT  7
@@ -198,8 +199,8 @@ scpi_result_t SCPI_I2cFrequencyQ(scpi_t* context)
     return i2c_limit_result(
         context,
         i2c_bus_freq_get(),
-        i2c_bus_freq_min_get(),
-        i2c_bus_freq_max_get()
+        I2C_BUS_FREQ_MIN,
+        I2C_BUS_FREQ_MAX
     );
 }
 
@@ -212,7 +213,11 @@ scpi_result_t SCPI_I2cAddress(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    if (value > i2c_bus_addr_max_get()) {
+    const uint32_t max = (i2c_bus_addr_width_get() == I2C_BUS_WIDTH_10BIT) ?
+                             I2C_BUS_ADDR_MAX_10BIT :
+                             I2C_BUS_ADDR_MAX_7BIT;
+
+    if (value > max) {
         SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
         return SCPI_RES_ERR;
     }
@@ -286,8 +291,7 @@ scpi_result_t SCPI_I2cTimeout(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    if (value < i2c_bus_timeout_min_get() ||
-        value > i2c_bus_timeout_max_get()) {
+    if (value < I2C_BUS_TIMEOUT_MIN || value > I2C_BUS_TIMEOUT_MAX) {
         SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
         return SCPI_RES_ERR;
     }
@@ -301,8 +305,8 @@ scpi_result_t SCPI_I2cTimeoutQ(scpi_t* context)
     return i2c_limit_result(
         context,
         i2c_bus_timeout_get(),
-        i2c_bus_timeout_min_get(),
-        i2c_bus_timeout_max_get()
+        I2C_BUS_TIMEOUT_MIN,
+        I2C_BUS_TIMEOUT_MAX
     );
 }
 
