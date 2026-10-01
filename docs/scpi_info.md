@@ -56,29 +56,20 @@ List of supported SCPI commands:
   - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
   - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual level on the pin (for both input and output pins), example output "1".
 - Bus data format:
-  - `<Data>` - data parameter of bus write commands. Accepted in any of these forms, regardless of `FORMat[:DATA]`:
+  - `<Data>` - data parameter of bus write commands, up to 32 bytes. Accepted in any of these forms, regardless of `FORMat[:DATA]`:
     - comma-separated list of bytes, e.g. `#H50,#H01,255`;
     - definite-length arbitrary block, e.g. `#13ABC` (the first digit is the number of length digits, then the length, then the bytes).
   - `FORMat[:DATA] {ASCii | HEXadecimal | INTeger}` - sets the response format of bus read queries: ASCii - comma-separated decimal bytes, example output "80,1,255"; HEXadecimal - comma-separated hexadecimal bytes, example output "#H50,#H01,#HFF"; INTeger - definite-length arbitrary block of raw bytes, example output "#13ABC". Default is HEXadecimal.
   - `FORMat[:DATA]?` - response format query.
 - Bus I2C control (master mode):
-  - `BUS:I2C:STATe {OFF | ON | 0 | 1}` - enables and disables the I2C bus. When enabled, the SDA and SCL pins are reserved from GPIO.
+  - The bus uses dedicated pins of the external connector, SCL and SDA, not shared with IO1 - IO7. The SCL clock is fixed at 100 kHz and the transaction timeout at 100 ms. There are no internal pull-up resistors, SDA and SCL need external ones.
+  - `BUS:I2C:STATe {OFF | ON | 0 | 1}` - enables and disables the I2C bus. Default is OFF.
   - `BUS:I2C:STATe?` - I2C bus state query.
-  - `BUS:I2C:FREQuency {<Frequency>}` - sets the SCL clock frequency (in hertz), e.g. 100000 or 400000.
-  - `BUS:I2C:FREQuency? [MIN | MAX]` - SCL clock frequency, or the allowed minimum/maximum value.
-  - `BUS:I2C:ADDRess {<Address>}` - sets the slave address used by `WRITe`, `READ?` and `TRANsfer?`. `Address` is the unshifted slave address, e.g. `#H50`.
-  - `BUS:I2C:ADDRess?` - slave address query, example output "80".
-  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7.
-  - `BUS:I2C:ADDRess:WIDTh?` - slave address width query.
-  - `BUS:I2C:PULLup {OFF | ON | 0 | 1}` - enables and disables the internal pull-up resistors on SDA and SCL.
-  - `BUS:I2C:PULLup?` - internal pull-up state query.
-  - `BUS:I2C:TIMEout {<Timeout>}` - sets the transaction timeout (in milliseconds), including clock stretching by the slave.
-  - `BUS:I2C:TIMEout? [MIN | MAX]` - transaction timeout, or the allowed minimum/maximum value.
-  - `BUS:I2C:WRITe {<Data>}` - writes data to the slave: START, address + W, data, STOP.
-  - `BUS:I2C:READ? {<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. Response format is set by `FORMat[:DATA]`, example output "18,52".
-  - `BUS:I2C:TRANsfer? {<Count>},{<Data>}` - writes data to the slave, then reads `Count` bytes in the same transaction using a repeated START (typical register read), example: `BUS:I2C:TRAN? 2,#H10` reads 2 bytes from register 0x10.
-  - `BUS:I2C:SCAN?` - scans the bus and returns the addresses of all slaves that acknowledged, example output "#H48,#H50"; returns "NONE" if no slave responded.
-  - `BUS:I2C:RECover` - bus recovery: generates up to 9 SCL pulses followed by STOP to release SDA held low by a slave.
+  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7. It defines the range of the `Address` argument of `WRITe` and `READ?`: #H00 to #H7F for 7 bits, #H000 to #H3FF for 10 bits. It can be set while the bus is disabled and applies at the next `STATe ON`. Any other width returns error -224.
+  - `BUS:I2C:ADDRess:WIDTh?` - slave address width query, example output "7".
+  - `BUS:I2C:WRITe {<Address>},{<Data>}` - writes data to the slave: START, address + W, data, STOP. `Address` is the unshifted slave address, e.g. `#H50`, `Data` is 1 to 32 bytes, example: `BUS:I2C:WRIT #H50,#H10,#H01`.
+  - `BUS:I2C:READ? {<Address>},{<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. `Count` is 1 to 32. Response format is set by `FORMat[:DATA]`, example: `BUS:I2C:READ? #H50,2` returns "#H12,#H34" in the default HEXadecimal format, or "18,52" in ASCii.
+  - `WRITe` and `READ?` on a disabled bus return error -221. An address out of range for the current width, a data byte above 255, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
 - Bus SPI control (master mode):
   - `BUS:SPI:STATe {OFF | ON | 0 | 1}` - enables and disables the SPI bus. When enabled, the SCK, MOSI, MISO and CS pins are reserved from GPIO.
   - `BUS:SPI:STATe?` - SPI bus state query.
@@ -125,13 +116,13 @@ List of supported SCPI commands:
   - `-222,"Data out of range"` - address, count, frequency or pin number out of range.
   - `-223,"Too much data"` - transfer length exceeds the device buffer.
   - `-224,"Illegal parameter value"` - invalid enumerated value.
-  - `301,"I2C address NACK"` - no slave acknowledged the address.
-  - `302,"I2C data NACK"` - the slave did not acknowledge a data byte.
-  - `303,"I2C bus timeout"` - transaction timeout, or bus held low by a slave (use `BUS:I2C:RECover`).
-  - `304,"I2C arbitration lost"` - another master is active on the bus.
+  - `-240,"Hardware error"` - arbitration lost to another master, or a misplaced START or STOP on the bus.
+  - `-241,"Hardware missing"` - the slave acknowledged neither the address nor a data byte. The peripheral reports one flag for both cases, so they cannot be told apart.
+  - `-365,"Time out error"` - the transaction did not complete within 100 ms, for example because a slave stretched the clock. The commands of the bus are served by the USB task, so an unresponsive slave delays the answer to any other command for up to that time.
   - `311,"UART receive buffer overflow"` - received bytes were lost.
   - `312,"UART framing error"` - invalid stop bit received.
   - `313,"UART parity error"` - parity check failed.
 - Bus and GPIO state after `*RST` and power-on:
   - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
+  - I2C: the bus is disabled and the address width is 7 bits.
   - `*SAV` and `*RCL` do not affect bus and GPIO state.
