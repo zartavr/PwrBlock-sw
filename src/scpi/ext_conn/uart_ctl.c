@@ -21,10 +21,19 @@
 #include "scpi/bus_format.h"
 
 #include <ctype.h>
-#include <string.h>
+#include <stdio.h>
 
 /// Number of characters of a frame, e.g. "8N1"
 #define FRAME_TEXT_LEN 3
+// To prevent the reception of truncated parts of incorrect frame setting
+#define FRAME_TEXT_BUF_LEN FRAME_TEXT_LEN + 2
+
+static const char PARITY_NAMES[] = {
+    [UART_BUS_PARITY_NONE] = 'N',
+    [UART_BUS_PARITY_EVEN] = 'E',
+    [UART_BUS_PARITY_ODD]  = 'O'
+};
+
 
 // Buffers of the transfers. The commands are served from the USB device task,
 // whose stack is too small to carry them, and only that task touches them
@@ -80,23 +89,32 @@ static scpi_result_t uart_status_result(scpi_t* context, UartBusStatus status)
  */
 static void uart_rx_errors_report(scpi_t* context)
 {
-    const uint32_t errors = uart_bus_rx_errors_take();
+    int16_t error = 0;
 
-    if ((errors & UART_BUS_RX_ERR_OVERRUN) != 0) {
-        SCPI_ErrorPush(context, SCPI_ERROR_INPUT_BUFFER_OVERRUN);
+    switch (uart_bus_rx_errors_get()) {
+        case UART_BUS_ERR_RX_OVERRUN: {
+            error = SCPI_ERROR_INPUT_BUFFER_OVERRUN;
+            break;
+        }
+        case UART_BUS_ERR_RX_FRAMING: {
+            error = SCPI_ERROR_FRAMING_ERROR_IN_CMD_MSG;
+            break;
+        }
+        case UART_BUS_ERR_RX_PARITY: {
+            error = SCPI_ERROR_PARITY_ERROR_IN_CMD_MSG;
+            break;
+        }
+        case UART_BUS_ERR_RX_NOISE: {
+            error = SCPI_ERROR_COMMUNICATION_ERROR;
+            break;
+        }
+        default: {
+            // No receive error is latched
+            return;
+        }
     }
 
-    if ((errors & UART_BUS_RX_ERR_FRAMING) != 0) {
-        SCPI_ErrorPush(context, SCPI_ERROR_FRAMING_ERROR_IN_CMD_MSG);
-    }
-
-    if ((errors & UART_BUS_RX_ERR_PARITY) != 0) {
-        SCPI_ErrorPush(context, SCPI_ERROR_PARITY_ERROR_IN_CMD_MSG);
-    }
-
-    if ((errors & UART_BUS_RX_ERR_NOISE) != 0) {
-        SCPI_ErrorPush(context, SCPI_ERROR_COMMUNICATION_ERROR);
-    }
+    SCPI_ErrorPush(context, error);
 }
 
 /**
@@ -175,25 +193,30 @@ static void uart_rx_result(scpi_t* context, uint32_t count)
  */
 static scpi_bool_t uart_frame_parse(const char* text, UartBusFrame* frame)
 {
-    const char data   = text[0];
-    const char parity = (char)toupper((unsigned char)text[1]);
-    const char stop   = text[2];
+    const char DATA   = text[0];
+    const char PARITY = toupper(text[1]);
+    const char STOP   = text[2];
 
-    if ((data != '7' && data != '8') || (stop != '1' && stop != '2')) {
-        return FALSE;
+    uint8_t data_bits = 8;
+    switch (DATA) {
+        case '7': data_bits = 7; break;
+        case '8': data_bits = 8; break;
+        case '9': data_bits = 9; break;
+        default: return FALSE;
     }
 
-    switch (parity) {
+    uint8_t parity = UART_BUS_PARITY_NONE;
+    switch (PARITY) {
         case 'N': {
-            frame->parity = UART_BUS_PARITY_NONE;
+            parity = UART_BUS_PARITY_NONE;
             break;
         }
         case 'E': {
-            frame->parity = UART_BUS_PARITY_EVEN;
+            parity = UART_BUS_PARITY_EVEN;
             break;
         }
         case 'O': {
-            frame->parity = UART_BUS_PARITY_ODD;
+            parity = UART_BUS_PARITY_ODD;
             break;
         }
         default: {
@@ -201,8 +224,17 @@ static scpi_bool_t uart_frame_parse(const char* text, UartBusFrame* frame)
         }
     }
 
-    frame->data_bits = (uint8_t)(data - '0');
-    frame->stop_bits = (uint8_t)(stop - '0');
+    uint8_t stop_bits = 1;
+    switch (STOP) {
+        case '1': stop_bits = 1; break;
+        case '2': stop_bits = 2; break;
+        default: return FALSE;
+    }
+
+    frame->data_bits = data_bits;
+    frame->parity    = parity;
+    frame->stop_bits = stop_bits;
+
     return TRUE;
 }
 
@@ -217,12 +249,9 @@ scpi_result_t SCPI_UartReset(scpi_t* context)
 scpi_result_t SCPI_UartState(scpi_t* context)
 {
     bool state = false;
-
-    // Read first parameter if present
     if (!SCPI_ParamBool(context, &state, TRUE)) {
         return SCPI_RES_ERR;
     }
-
     return uart_status_result(context, uart_bus_state_set(state));
 }
 
@@ -235,12 +264,9 @@ scpi_result_t SCPI_UartStateQ(scpi_t* context)
 scpi_result_t SCPI_UartBaud(scpi_t* context)
 {
     uint32_t baud = 0;
-
-    // Read first parameter if present
     if (!SCPI_ParamUInt32(context, &baud, TRUE)) {
         return SCPI_RES_ERR;
     }
-
     return uart_status_result(context, uart_bus_baud_set(baud));
 }
 
@@ -248,7 +274,7 @@ scpi_result_t SCPI_UartBaudQ(scpi_t* context)
 {
     uint32_t baud = 0;
 
-    // Read first parameter if present: map to scpi_special_numbers_def
+    // Read first parameter if present MIN/MAX?
     scpi_number_t par;
     if (!SCPI_ParamNumber(context, scpi_special_numbers_def, &par, FALSE)) {
         // If no parameter, than reply the current baud rate
@@ -265,6 +291,10 @@ scpi_result_t SCPI_UartBaudQ(scpi_t* context)
                 baud = UART_BUS_BAUD_MAX;
                 break;
             }
+            case SCPI_NUM_DEF: {
+                baud = UART_BUS_BAUD_DEFAULT;
+                break;
+            }
             default: {
                 SCPI_ErrorPush(context, SCPI_ERROR_ILLEGAL_PARAMETER_VALUE);
                 return SCPI_RES_ERR;
@@ -278,13 +308,11 @@ scpi_result_t SCPI_UartBaudQ(scpi_t* context)
 
 scpi_result_t SCPI_UartFrame(scpi_t* context)
 {
-    // Room for one more character than a frame, so a longer text is told
-    // apart from a truncated one
-    char   text[FRAME_TEXT_LEN + 2] = {0};
+
+    char   text[FRAME_TEXT_BUF_LEN] = {0};
     size_t len                      = 0;
 
-    // Read first parameter if present
-    if (!SCPI_ParamCopyText(context, text, sizeof(text), &len, TRUE)) {
+    if (!SCPI_ParamCopyText(context, text, FRAME_TEXT_BUF_LEN, &len, TRUE)) {
         return SCPI_RES_ERR;
     }
 
@@ -299,18 +327,21 @@ scpi_result_t SCPI_UartFrame(scpi_t* context)
 
 scpi_result_t SCPI_UartFrameQ(scpi_t* context)
 {
-    static const char PARITY_NAMES[] = {'N', 'E', 'O'};
+    UartBusFrame frame = uart_bus_frame_get();
 
-    const UartBusFrame frame = uart_bus_frame_get();
-
-    const char text[] = {
-        (char)('0' + frame.data_bits),
+    char text[FRAME_TEXT_LEN + 1];
+    int  ret = snprintf(
+        text,
+        sizeof(text),
+        "%u%c%u",
+        frame.data_bits,
         PARITY_NAMES[frame.parity],
-        (char)('0' + frame.stop_bits),
-        '\0',
-    };
+        frame.stop_bits
+    );
+    if (ret != FRAME_TEXT_LEN) {
+        return SCPI_RES_ERR;
+    }
 
-    // Quoted, so the reply can be sent back as the parameter of FRAMe
     SCPI_ResultText(context, text);
     return SCPI_RES_OK;
 }
@@ -335,10 +366,8 @@ scpi_result_t SCPI_UartReadQ(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // Read first parameter if present
     uint32_t count = 0;
     if (!uart_count_param(context, &count, FALSE)) {
-        // A missing count is not an error, it asks for the buffered bytes
         if (SCPI_ParamErrorOccurred(context)) {
             return SCPI_RES_ERR;
         }
@@ -359,7 +388,6 @@ scpi_result_t SCPI_UartTransferQ(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // Read first parameter if present
     uint32_t count = 0;
     if (!uart_count_param(context, &count, TRUE)) {
         return SCPI_RES_ERR;
@@ -370,10 +398,9 @@ scpi_result_t SCPI_UartTransferQ(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    // The reply has to follow the request, not a byte left from before it
     uart_bus_rx_clear();
 
-    const UartBusStatus status = uart_bus_write(tx_buffer, len);
+    UartBusStatus status = uart_bus_write(tx_buffer, len);
     if (status != UART_BUS_OK) {
         return uart_status_result(context, status);
     }

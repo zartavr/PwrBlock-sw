@@ -25,21 +25,20 @@
 /// Current configuration of the bus
 typedef struct
 {
-    bool         enabled;
-    uint32_t     baud;
-    UartBusFrame frame;
-} UartBusCfg;
+    bool              enabled;
+    uint32_t          baud;
+    UartBusFrame      frame;
+    volatile uint32_t errors;
+} UartBus;
 
 /// Frame applied on power-on and by *RST, 8N1
 static const UartBusFrame FRAME_DEFAULT = {
-    .data_bits = 8,
-    .parity    = UART_BUS_PARITY_NONE,
-    .stop_bits = 1,
+    .data_bits = 8, .parity = UART_BUS_PARITY_NONE, .stop_bits = 1
 };
 
 extern UART_HandleTypeDef huart3;
 
-static UartBusCfg cfg;
+static UartBus bus;
 
 // Ring buffer of the received bytes, filled by the interrupt and drained by
 // the thread of the parser. The indexes run free and are masked on access,
@@ -48,9 +47,6 @@ static UartBusCfg cfg;
 static uint8_t           rx_buf[UART_BUS_RX_BUF_LEN];
 static volatile uint16_t rx_head;
 static volatile uint16_t rx_tail;
-
-// Receive errors latched by the interrupt, UART_BUS_RX_ERR_* bits
-static volatile uint32_t rx_errors;
 
 /**
  * @brief Get the word length of the peripheral for the stored frame.
@@ -61,8 +57,8 @@ static volatile uint32_t rx_errors;
  */
 static uint32_t uart_bus_word_length(void)
 {
-    const bool     parity = (cfg.frame.parity != UART_BUS_PARITY_NONE);
-    const uint32_t bits   = cfg.frame.data_bits + (parity ? 1 : 0);
+    bool     parity = (bus.frame.parity != UART_BUS_PARITY_NONE);
+    uint32_t bits   = bus.frame.data_bits + (parity ? 1 : 0);
 
     if (bits == 7) {
         return UART_WORDLENGTH_7B;
@@ -82,7 +78,7 @@ static uint32_t uart_bus_word_length(void)
  */
 static uint32_t uart_bus_parity(void)
 {
-    switch (cfg.frame.parity) {
+    switch (bus.frame.parity) {
         case UART_BUS_PARITY_EVEN: {
             return UART_PARITY_EVEN;
         }
@@ -109,10 +105,10 @@ static UartBusStatus uart_bus_apply(void)
     HAL_UART_DeInit(&huart3);
 
     huart3.Instance        = USART3;
-    huart3.Init.BaudRate   = cfg.baud;
+    huart3.Init.BaudRate   = bus.baud;
     huart3.Init.WordLength = uart_bus_word_length();
     huart3.Init.StopBits =
-        (cfg.frame.stop_bits == 2) ? UART_STOPBITS_2 : UART_STOPBITS_1;
+        (bus.frame.stop_bits == 2) ? UART_STOPBITS_2 : UART_STOPBITS_1;
     huart3.Init.Parity                 = uart_bus_parity();
     huart3.Init.Mode                   = UART_MODE_TX_RX;
     huart3.Init.HwFlowCtl              = UART_HWCONTROL_NONE;
@@ -152,13 +148,13 @@ static UartBusStatus uart_bus_apply(void)
  */
 static UartBusStatus uart_bus_refresh(void)
 {
-    if (!cfg.enabled) {
+    if (!bus.enabled) {
         return UART_BUS_OK;
     }
 
-    const UartBusStatus status = uart_bus_apply();
+    UartBusStatus status = uart_bus_apply();
     if (status != UART_BUS_OK) {
-        cfg.enabled = false;
+        bus.enabled = false;
         HAL_UART_DeInit(&huart3);
     }
 
@@ -172,9 +168,11 @@ void uart_bus_init(void)
 
 void uart_bus_reset(void)
 {
-    cfg.enabled = false;
-    cfg.baud    = UART_BUS_BAUD_DEFAULT;
-    cfg.frame   = FRAME_DEFAULT;
+    bus.enabled = false;
+    bus.baud    = UART_BUS_BAUD_DEFAULT;
+    bus.frame   = FRAME_DEFAULT;
+    bus.errors  = 0,
+
 
     uart_bus_rx_clear();
 
@@ -194,12 +192,12 @@ UartBusStatus uart_bus_state_set(bool enabled)
     }
 #endif
 
-    if (enabled == cfg.enabled) {
+    if (enabled == bus.enabled) {
         return UART_BUS_OK;
     }
 
     if (!enabled) {
-        cfg.enabled = false;
+        bus.enabled = false;
         HAL_UART_DeInit(&huart3);
         uart_bus_rx_clear();
         return UART_BUS_OK;
@@ -207,14 +205,14 @@ UartBusStatus uart_bus_state_set(bool enabled)
 
     // Marked before the setup, the interrupt keeps the received bytes only on
     // an enabled bus
-    cfg.enabled = true;
+    bus.enabled = true;
 
     return uart_bus_refresh();
 }
 
 bool uart_bus_state_get(void)
 {
-    return cfg.enabled;
+    return bus.enabled;
 }
 
 UartBusStatus uart_bus_baud_set(uint32_t baud)
@@ -223,14 +221,14 @@ UartBusStatus uart_bus_baud_set(uint32_t baud)
         return UART_BUS_ERR_PARAM;
     }
 
-    cfg.baud = baud;
+    bus.baud = baud;
 
     return uart_bus_refresh();
 }
 
 uint32_t uart_bus_baud_get(void)
 {
-    return cfg.baud;
+    return bus.baud;
 }
 
 UartBusStatus uart_bus_frame_set(UartBusFrame frame)
@@ -249,19 +247,19 @@ UartBusStatus uart_bus_frame_set(UartBusFrame frame)
         return UART_BUS_ERR_PARAM;
     }
 
-    cfg.frame = frame;
+    bus.frame = frame;
 
     return uart_bus_refresh();
 }
 
 UartBusFrame uart_bus_frame_get(void)
 {
-    return cfg.frame;
+    return bus.frame;
 }
 
 UartBusStatus uart_bus_write(const uint8_t* data, uint32_t len)
 {
-    if (!cfg.enabled) {
+    if (!bus.enabled) {
         return UART_BUS_ERR_DISABLED;
     }
 
@@ -269,7 +267,7 @@ UartBusStatus uart_bus_write(const uint8_t* data, uint32_t len)
         return UART_BUS_ERR_PARAM;
     }
 
-    const HAL_StatusTypeDef status = HAL_UART_Transmit(
+    HAL_StatusTypeDef status = HAL_UART_Transmit(
         &huart3, (uint8_t*)data, (uint16_t)len, UART_BUS_TIMEOUT_MS
     );
 
@@ -302,7 +300,7 @@ uint32_t uart_bus_read(uint8_t* dst, uint32_t max)
 uint32_t uart_bus_read_wait(uint8_t* dst, uint32_t count)
 {
     // The tick of the kernel is 1 ms
-    const uint32_t start = osKernelGetTickCount();
+    uint32_t start = osKernelGetTickCount();
 
     while (uart_bus_rx_count() < count &&
            (osKernelGetTickCount() - start) < UART_BUS_TIMEOUT_MS) {
@@ -320,43 +318,35 @@ uint32_t uart_bus_rx_count(void)
 void uart_bus_rx_clear(void)
 {
     __disable_irq();
-    rx_tail   = rx_head;
-    rx_errors = 0;
+    rx_tail    = rx_head;
+    bus.errors = 0;
     __enable_irq();
 }
 
-uint32_t uart_bus_rx_errors_take(void)
+UartBusStatus uart_bus_rx_errors_get(void)
 {
-    __disable_irq();
-    const uint32_t errors = rx_errors;
-    rx_errors             = 0;
-    __enable_irq();
-
-    return errors;
+    uint32_t errors = bus.errors;
+    if (errors & USART_ISR_ORE) {
+        return UART_BUS_ERR_RX_OVERRUN;
+    }
+    if (errors & USART_ISR_FE) {
+        return UART_BUS_ERR_RX_FRAMING;
+    }
+    if (errors & USART_ISR_PE) {
+        return UART_BUS_ERR_RX_PARITY;
+    }
+    if (errors & USART_ISR_NE) {
+        return UART_BUS_ERR_RX_NOISE;
+    }
+    return UART_BUS_OK;
 }
 
 void uart_bus_irq_handler(void)
 {
     USART_TypeDef* const uart = USART3;
 
-    const uint32_t isr    = uart->ISR;
-    uint32_t       errors = 0;
-
-    if ((isr & USART_ISR_ORE) != 0) {
-        errors |= UART_BUS_RX_ERR_OVERRUN;
-    }
-
-    if ((isr & USART_ISR_FE) != 0) {
-        errors |= UART_BUS_RX_ERR_FRAMING;
-    }
-
-    if ((isr & USART_ISR_PE) != 0) {
-        errors |= UART_BUS_RX_ERR_PARITY;
-    }
-
-    if ((isr & USART_ISR_NE) != 0) {
-        errors |= UART_BUS_RX_ERR_NOISE;
-    }
+    uint32_t errors = uart->ISR & (USART_ISR_ORE | USART_ISR_FE | USART_ISR_PE |
+                                   USART_ISR_NE);
 
     if (errors != 0) {
         uart->ICR =
@@ -364,20 +354,18 @@ void uart_bus_irq_handler(void)
     }
 
     // With parity the peripheral leaves the parity bit above the data
-    const uint8_t mask = (cfg.frame.data_bits == 7) ? 0x7F : 0xFF;
+    uint8_t mask = (bus.frame.data_bits == 7) ? 0x7F : 0xFF;
 
-    // The FIFO is drained even on a disabled bus, the pending interrupt would
-    // otherwise fire again and again
     while ((uart->ISR & USART_ISR_RXNE_RXFNE) != 0) {
-        const uint8_t byte = (uint8_t)(uart->RDR & mask);
+        uint8_t byte = (uint8_t)(uart->RDR & mask);
 
-        if (!cfg.enabled) {
+        if (!bus.enabled) {
             continue;
         }
 
-        const uint16_t head = rx_head;
+        uint16_t head = rx_head;
         if ((uint16_t)(head - rx_tail) >= UART_BUS_RX_BUF_LEN) {
-            errors |= UART_BUS_RX_ERR_OVERRUN;
+            errors |= USART_ISR_ORE;
             continue;
         }
 
@@ -385,7 +373,7 @@ void uart_bus_irq_handler(void)
         rx_head                                  = head + 1;
     }
 
-    if (cfg.enabled) {
-        rx_errors |= errors;
+    if (bus.enabled) {
+        bus.errors |= errors;
     }
 }

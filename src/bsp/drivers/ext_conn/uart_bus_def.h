@@ -18,7 +18,7 @@
 
 /*
  * Fixed parameters and limits of the UART bus: timeout, baud rate range,
- * transfer length and size of the receive buffer.
+ * transfer length, size of the receive buffer and the receive error flags.
  *
  * Internal to the UART component: include it from its .c files only
  * (uart_bus.c and uart_ctl.c), the public interface of the backend is

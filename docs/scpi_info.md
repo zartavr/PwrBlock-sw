@@ -77,7 +77,7 @@ List of supported SCPI commands:
   - `BUS:UART:STATe?` - UART bus state query.
   - `BUS:UART:BAUD {<Baud>}` - sets the baud rate, 9600 to 4000000, e.g. 115200. Default is 115200. A rate out of range returns error -222.
   - `BUS:UART:BAUD? [MIN | MAX]` - baud rate, or the allowed minimum/maximum value.
-  - `BUS:UART:FRAMe {"<Frame>"}` - sets the frame format as a quoted string `"<data bits><parity><stop bits>"`: data bits `7` or `8`, parity `N` (none), `E` (even) or `O` (odd), stop bits `1` or `2`, case-insensitive. Default is `"8N1"`, example: `BUS:UART:FRAM "8N2"`. Any other value returns error -224.
+  - `BUS:UART:FRAMe {"<Frame>"}` - sets the frame format as a quoted string `"<data bits><parity><stop bits>"`: data bits `7` or `8`, parity `N` (none), `E` (even) or `O` (odd), stop bits `1` or `2`, case-insensitive. Default is `"8N1"`, example: `BUS:UART:FRAM "8N2"`. The quotes (single or double) are required, an unquoted value such as `8N2` returns error -104 (`Data type error`). Any other text returns error -224.
   - `BUS:UART:FRAMe?` - frame format query, example output `"8N1"` (quoted, so it can be sent back to `FRAMe`).
   - `BAUD` and `FRAMe` can be set while the bus is disabled and apply at the next `STATe ON`. On an enabled bus they apply at once and keep the receive buffer.
   - `BUS:UART:WRITe {<Data>}` - transmits data, 1 to 32 bytes; the command completes when all bytes are sent.
