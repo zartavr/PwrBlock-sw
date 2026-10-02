@@ -70,7 +70,25 @@ List of supported SCPI commands:
   - `BUS:I2C:WRITe {<Address>},{<Data>}` - writes data to the slave: START, address + W, data, STOP. `Address` is the unshifted slave address, e.g. `#H50`, `Data` is 1 to 32 bytes, example: `BUS:I2C:WRIT #H50,#H10,#H01`.
   - `BUS:I2C:READ? {<Address>},{<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. `Count` is 1 to 32. Response format is set by `FORMat[:DATA]`, example: `BUS:I2C:READ? #H50,2` returns "#H12,#H34" in the default HEXadecimal format, or "18,52" in ASCii.
   - `WRITe` and `READ?` on a disabled bus return error -221. An address out of range for the current width, a data byte above 255, an empty `Data` block, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
+- Bus UART control:
+  - The bus uses dedicated pins of the external connector, TX and RX, not shared with IO1 - IO7. There is no hardware flow control (RTS/CTS). The transmit and receive timeout is fixed at 100 ms. Received bytes are collected in the background into a 256-byte receive buffer while the bus is enabled.
+  - The bus shares its peripheral with the USB-PD tracer. In a firmware built with the tracer (`TRACE_USBPD`), the bus cannot be enabled and `STATe ON` returns error -221.
+  - `BUS:UART:STATe {OFF | ON | 0 | 1}` - enables and disables the UART bus. Default is OFF. Disabling the bus clears the receive buffer.
+  - `BUS:UART:STATe?` - UART bus state query.
+  - `BUS:UART:BAUD {<Baud>}` - sets the baud rate, 9600 to 4000000, e.g. 115200. Default is 115200. A rate out of range returns error -222.
+  - `BUS:UART:BAUD? [MIN | MAX]` - baud rate, or the allowed minimum/maximum value.
+  - `BUS:UART:FRAMe {"<Frame>"}` - sets the frame format as a quoted string `"<data bits><parity><stop bits>"`: data bits `7` or `8`, parity `N` (none), `E` (even) or `O` (odd), stop bits `1` or `2`, case-insensitive. Default is `"8N1"`, example: `BUS:UART:FRAM "8N2"`. Any other value returns error -224.
+  - `BUS:UART:FRAMe?` - frame format query, example output `"8N1"` (quoted, so it can be sent back to `FRAMe`).
+  - `BAUD` and `FRAMe` can be set while the bus is disabled and apply at the next `STATe ON`. On an enabled bus they apply at once and keep the receive buffer.
+  - `BUS:UART:WRITe {<Data>}` - transmits data, 1 to 32 bytes; the command completes when all bytes are sent.
+  - `BUS:UART:READ? [<Count>]` - returns bytes from the receive buffer. With `Count`, 1 to 32, waits until `Count` bytes are received or the 100 ms timeout expires, and returns the bytes received so far. Without `Count`, returns up to 32 buffered bytes immediately, the rest stays in the buffer. Returns "NONE" if no bytes are available. Response format is set by `FORMat[:DATA]`.
+  - `BUS:UART:TRANsfer? {<Count>},{<Data>}` - clears the receive buffer, transmits data and waits for `Count` bytes or the 100 ms timeout (request-response devices), then answers like `READ?`, example: `BUS:UART:TRAN? 4,#H41,#H54,#H0D,#H0A` sends "AT\r\n".
+  - `BUS:UART:BUFFer:COUNt?` - query for the number of bytes in the receive buffer, example output "12".
+  - `BUS:UART:BUFFer:CLEar` - clears the receive buffer and the pending receive errors.
+  - `WRITe`, `READ?` and `TRANsfer?` on a disabled bus return error -221. A data byte above 255, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
+  - Receive errors are collected in the background and reported by the next `READ?` or `TRANsfer?`, which still returns the received bytes: -363 if bytes were lost, -362 on a framing error, -361 on a parity error, -360 on noise.
 - Bus and GPIO state after `*RST` and power-on:
   - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
   - I2C: the bus is disabled and the address width is 7 bits.
+  - UART: the bus is disabled at 115200 baud with a `"8N1"` frame, and the receive buffer is empty.
   - `*SAV` and `*RCL` do not affect bus and GPIO state.

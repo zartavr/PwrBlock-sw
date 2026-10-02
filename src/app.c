@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "bsp/drivers/ext_conn//uart_bus.h"
 #include "bsp/drivers/ext_conn/digital_gpio.h"
 #include "bsp/drivers/ext_conn/i2c_bus.h"
 #include "cmsis_os2.h"
@@ -27,6 +28,7 @@ int app(void)
     adc_manager_init();
     digital_gpio_init();
     i2c_bus_init();
+    uart_bus_init();
 
     thread_usbpd_init();
     thread_usbtmc_init();
