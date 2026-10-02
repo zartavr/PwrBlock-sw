@@ -27,18 +27,17 @@ typedef struct
     bool         enabled;
     uint32_t     baud;
     UartBusFrame frame;
-} UartBusCfg;
+    uint32_t     errors;
+} UartBus;
 
 /// Frame applied on power-on and by *RST, 8N1
 static const UartBusFrame FRAME_DEFAULT = {
-    .data_bits = 8,
-    .parity    = UART_BUS_PARITY_NONE,
-    .stop_bits = 1,
+    .data_bits = 8, .parity = UART_BUS_PARITY_NONE, .stop_bits = 1
 };
 
 extern UART_HandleTypeDef huart3;
 
-static UartBusCfg cfg;
+static UartBus cfg;
 
 // Ring buffer of the received bytes, filled by the interrupt and drained by
 // the thread of the parser. The indexes run free and are masked on access,
@@ -47,9 +46,6 @@ static UartBusCfg cfg;
 static uint8_t           rx_buf[UART_BUS_RX_BUF_LEN];
 static volatile uint16_t rx_head;
 static volatile uint16_t rx_tail;
-
-// Receive errors latched by the interrupt, UART_BUS_RX_ERR_* bits
-static volatile uint32_t rx_errors;
 
 /**
  * @brief Get the word length of the peripheral for the stored frame.
@@ -174,6 +170,8 @@ void uart_bus_reset(void)
     cfg.enabled = false;
     cfg.baud    = UART_BUS_BAUD_DEFAULT;
     cfg.frame   = FRAME_DEFAULT;
+    cfg.errors  = 0,
+
 
     uart_bus_rx_clear();
 
@@ -268,7 +266,7 @@ UartBusStatus uart_bus_write(const uint8_t* data, uint32_t len)
         return UART_BUS_ERR_PARAM;
     }
 
-    const HAL_StatusTypeDef status = HAL_UART_Transmit(
+    HAL_StatusTypeDef status = HAL_UART_Transmit(
         &huart3, (uint8_t*)data, (uint16_t)len, UART_BUS_TIMEOUT_MS
     );
 
@@ -319,43 +317,34 @@ uint32_t uart_bus_rx_count(void)
 void uart_bus_rx_clear(void)
 {
     __disable_irq();
-    rx_tail   = rx_head;
-    rx_errors = 0;
+    rx_tail = rx_head;
     __enable_irq();
+    cfg.errors = 0;
 }
 
-uint32_t uart_bus_rx_errors_take(void)
+UartBusStatus uart_bus_rx_errors_get(void)
 {
-    __disable_irq();
-    const uint32_t errors = rx_errors;
-    rx_errors             = 0;
-    __enable_irq();
-
-    return errors;
+    if (cfg.errors & USART_ISR_ORE) {
+        return UART_BUS_ERR_RX_OVERRUN;
+    }
+    if (cfg.errors & USART_ISR_FE) {
+        return UART_BUS_ERR_RX_FRAMING;
+    }
+    if (cfg.errors & USART_ISR_PE) {
+        return UART_BUS_ERR_RX_PARITY;
+    }
+    if (cfg.errors & USART_ISR_NE) {
+        return UART_BUS_ERR_RX_NOISE;
+    }
+    return UART_BUS_OK;
 }
 
 void uart_bus_irq_handler(void)
 {
     USART_TypeDef* const uart = USART3;
 
-    const uint32_t isr    = uart->ISR;
-    uint32_t       errors = 0;
-
-    if ((isr & USART_ISR_ORE) != 0) {
-        errors |= UART_BUS_RX_ERR_OVERRUN;
-    }
-
-    if ((isr & USART_ISR_FE) != 0) {
-        errors |= UART_BUS_RX_ERR_FRAMING;
-    }
-
-    if ((isr & USART_ISR_PE) != 0) {
-        errors |= UART_BUS_RX_ERR_PARITY;
-    }
-
-    if ((isr & USART_ISR_NE) != 0) {
-        errors |= UART_BUS_RX_ERR_NOISE;
-    }
+    uint32_t errors = uart->ISR & (USART_ISR_ORE | USART_ISR_FE | USART_ISR_PE |
+                                   USART_ISR_NE);
 
     if (errors != 0) {
         uart->ICR =
@@ -365,8 +354,6 @@ void uart_bus_irq_handler(void)
     // With parity the peripheral leaves the parity bit above the data
     const uint8_t mask = (cfg.frame.data_bits == 7) ? 0x7F : 0xFF;
 
-    // The FIFO is drained even on a disabled bus, the pending interrupt would
-    // otherwise fire again and again
     while ((uart->ISR & USART_ISR_RXNE_RXFNE) != 0) {
         const uint8_t byte = (uint8_t)(uart->RDR & mask);
 
@@ -376,7 +363,7 @@ void uart_bus_irq_handler(void)
 
         const uint16_t head = rx_head;
         if ((uint16_t)(head - rx_tail) >= UART_BUS_RX_BUF_LEN) {
-            errors |= UART_BUS_RX_ERR_OVERRUN;
+            errors |= USART_ISR_ORE;
             continue;
         }
 
@@ -385,6 +372,6 @@ void uart_bus_irq_handler(void)
     }
 
     if (cfg.enabled) {
-        rx_errors |= errors;
+        cfg.errors |= errors;
     }
 }

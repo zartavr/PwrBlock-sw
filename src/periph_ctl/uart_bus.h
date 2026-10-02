@@ -23,34 +23,32 @@
 typedef enum
 {
     UART_BUS_OK = 0,
-    UART_BUS_ERR_TIMEOUT,   // Transmission did not complete in time
-    UART_BUS_ERR_BUS,       // The hardware rejected the setup or the transfer
-    UART_BUS_ERR_DISABLED,  // The bus is disabled
-    UART_BUS_ERR_PARAM,     // Baud rate, frame or length out of range
-    UART_BUS_ERR_BUSY,      // USART3 is owned by the USB-PD tracer
+    UART_BUS_ERR_TIMEOUT,     // Transmission did not complete in time
+    UART_BUS_ERR_BUS,         // The hardware rejected the setup or the transfer
+    UART_BUS_ERR_DISABLED,    // The bus is disabled
+    UART_BUS_ERR_PARAM,       // Baud rate, frame or length out of range
+    UART_BUS_ERR_BUSY,        // USART3 is owned by the USB-PD tracer
+    UART_BUS_ERR_RX_OVERRUN,  // Received bytes were lost
+    UART_BUS_ERR_RX_FRAMING,  // Invalid stop bit
+    UART_BUS_ERR_RX_PARITY,   // Parity check failed
+    UART_BUS_ERR_RX_NOISE,    // Noise detected on a bit
 } UartBusStatus;
 
 /// Parity of the frame
 typedef enum
 {
     UART_BUS_PARITY_NONE = 0,
-    UART_BUS_PARITY_EVEN,
-    UART_BUS_PARITY_ODD,
+    UART_BUS_PARITY_EVEN = 1,
+    UART_BUS_PARITY_ODD  = 2,
 } UartBusParity;
 
 /// Format of the frame, e.g. 8N1
 typedef struct
 {
-    uint8_t       data_bits;  // 7 or 8
+    uint8_t       data_bits;  // 7-9
     UartBusParity parity;
     uint8_t       stop_bits;  // 1 or 2
 } UartBusFrame;
-
-/// Receive errors latched since they were last taken, a bit mask
-#define UART_BUS_RX_ERR_OVERRUN (1U << 0)  // Received bytes were lost
-#define UART_BUS_RX_ERR_FRAMING (1U << 1)  // Invalid stop bit
-#define UART_BUS_RX_ERR_PARITY  (1U << 2)  // Parity check failed
-#define UART_BUS_RX_ERR_NOISE   (1U << 3)  // Noise detected on a bit
 
 /**
  * @brief Init the UART bus of the external connector.
@@ -186,9 +184,9 @@ void uart_bus_rx_clear(void);
 /**
  * @brief Take the receive errors latched since the previous call.
  *
- * @return uint32_t Mask of UART_BUS_RX_ERR_* bits, 0 if none.
+ * @return uint32_t Mask of UART_BUS_RX_ERR_* bits (uart_bus_def.h), 0 if none.
  */
-uint32_t uart_bus_rx_errors_take(void);
+UartBusStatus uart_bus_rx_errors_get(void);
 
 /**
  * @brief Serve the receiver of the bus, called from the USART3 interrupt.
