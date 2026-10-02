@@ -3,6 +3,7 @@
 #include "periph_ctl/bus_format.h"
 #include "periph_ctl/digital_ctl.h"
 #include "periph_ctl/i2c_ctl.h"
+#include "periph_ctl/uart_ctl.h"
 #include "scpi/scpi.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -312,6 +313,50 @@ const scpi_command_t scpi_commands[] = {
      .pattern  = "BUS:I2C:READ?",
      .callback = SCPI_I2cReadQ,
      },
+    {
+     .pattern  = "BUS:UART:STATe",
+     .callback = SCPI_UartState,
+     },
+    {
+     .pattern  = "BUS:UART:STATe?",
+     .callback = SCPI_UartStateQ,
+     },
+    {
+     .pattern  = "BUS:UART:BAUD",
+     .callback = SCPI_UartBaud,
+     },
+    {
+     .pattern  = "BUS:UART:BAUD?",
+     .callback = SCPI_UartBaudQ,
+     },
+    {
+     .pattern  = "BUS:UART:FRAMe",
+     .callback = SCPI_UartFrame,
+     },
+    {
+     .pattern  = "BUS:UART:FRAMe?",
+     .callback = SCPI_UartFrameQ,
+     },
+    {
+     .pattern  = "BUS:UART:WRITe",
+     .callback = SCPI_UartWrite,
+     },
+    {
+     .pattern  = "BUS:UART:READ?",
+     .callback = SCPI_UartReadQ,
+     },
+    {
+     .pattern  = "BUS:UART:TRANsfer?",
+     .callback = SCPI_UartTransferQ,
+     },
+    {
+     .pattern  = "BUS:UART:BUFFer:COUNt?",
+     .callback = SCPI_UartBufferCountQ,
+     },
+    {
+     .pattern  = "BUS:UART:BUFFer:CLEar",
+     .callback = SCPI_UartBufferClear,
+     },
 
     SCPI_CMD_LIST_END
 };
@@ -369,6 +414,7 @@ scpi_result_t SCPI_Reset(scpi_t* context)
     SCPI_DigitalReset(context);
     SCPI_BusFormatReset(context);
     SCPI_I2cReset(context);
+    SCPI_UartReset(context);
 
     return SCPI_RES_OK;
 }

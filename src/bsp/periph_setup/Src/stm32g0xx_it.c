@@ -28,6 +28,8 @@
 // UCPD Trace module
 #ifdef _TRACE
 #include <tracer_emb.h>
+#else
+#include <periph_ctl/uart_bus.h>
 #endif
 /* USER CODE END Includes */
 
@@ -271,13 +273,15 @@ void SPI1_IRQHandler(void)
 void USART3_4_5_6_LPUART1_IRQHandler(void)
 {
     /* USER CODE BEGIN USART3_4_5_6_LPUART1_IRQn 0 */
-
+#ifdef _TRACE
+    // Trace USB PD events, binary format
+    TRACER_EMB_IRQHandlerUSART();
+#else
+    uart_bus_irq_handler();
+#endif
     /* USER CODE END USART3_4_5_6_LPUART1_IRQn 0 */
     HAL_UART_IRQHandler(&huart3);
     /* USER CODE BEGIN USART3_4_5_6_LPUART1_IRQn 1 */
-#ifdef _TRACE
-    TRACER_EMB_IRQHandlerUSART();
-#endif
     /* USER CODE END USART3_4_5_6_LPUART1_IRQn 1 */
 }
 

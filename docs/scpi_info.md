@@ -92,37 +92,37 @@ List of supported SCPI commands:
   - `BUS:SPI:TRANsfer? {<Count>},{<Data>}` - transmits data, then reads `Count` bytes under one chip select assertion (typical command/register read), example: `BUS:SPI:TRAN? 3,#H9F` reads a 3-byte JEDEC ID from a flash chip.
   - `BUS:SPI:EXCHange? {<Data>}` - full-duplex transfer: transmits data and returns the same number of received bytes.
 - Bus UART control:
-  - `BUS:UART:STATe {OFF | ON | 0 | 1}` - enables and disables the UART bus. When enabled, the TX and RX pins are reserved from GPIO. Disabling the bus clears the receive buffer.
+  - The bus uses dedicated pins of the external connector, TX and RX, not shared with IO1 - IO7. There is no hardware flow control (RTS/CTS). The transmit and receive timeout is fixed at 100 ms. Received bytes are collected in the background into a 256-byte receive buffer while the bus is enabled.
+  - The bus shares its peripheral with the USB-PD tracer. In a firmware built with the tracer (`TRACE_USBPD`), the bus cannot be enabled and `STATe ON` returns error -221.
+  - `BUS:UART:STATe {OFF | ON | 0 | 1}` - enables and disables the UART bus. Default is OFF. Disabling the bus clears the receive buffer.
   - `BUS:UART:STATe?` - UART bus state query.
-  - `BUS:UART:BAUD {<Baud>}` - sets the baud rate, e.g. 9600 or 115200.
+  - `BUS:UART:BAUD {<Baud>}` - sets the baud rate, 9600 to 4000000, e.g. 115200. Default is 115200. A rate out of range returns error -222.
   - `BUS:UART:BAUD? [MIN | MAX]` - baud rate, or the allowed minimum/maximum value.
-  - `BUS:UART:BITS {7 | 8}` - sets the number of data bits. Default is 8.
-  - `BUS:UART:BITS?` - data bits query.
-  - `BUS:UART:PARity[:TYPE] {NONE | EVEN | ODD}` - sets the parity type. Default is NONE.
-  - `BUS:UART:PARity[:TYPE]?` - parity type query.
-  - `BUS:UART:SBITs {1 | 2}` - sets the number of stop bits. Default is 1.
-  - `BUS:UART:SBITs?` - stop bits query.
-  - `BUS:UART:PACE {NONE | HARDware}` - sets flow control: NONE or hardware RTS/CTS. Default is NONE. HARDware reserves the RTS and CTS pins in addition to TX and RX.
-  - `BUS:UART:PACE?` - flow control query.
-  - `BUS:UART:TIMEout {<Timeout>}` - sets the receive wait time (in milliseconds) for `READ?` and `TRANsfer?`.
-  - `BUS:UART:TIMEout? [MIN | MAX]` - receive wait time, or the allowed minimum/maximum value.
-  - `BUS:UART:WRITe {<Data>}` - transmits data; the command completes when all bytes are sent.
-  - `BUS:UART:READ? [<Count>]` - returns bytes from the receive buffer. With `Count`, waits until `Count` bytes are received or the timeout expires, and returns the bytes received so far. Without `Count`, returns all buffered bytes immediately. Returns "NONE" if no bytes are available. Response format is set by `FORMat[:DATA]`.
-  - `BUS:UART:TRANsfer? {<Count>},{<Data>}` - clears the receive buffer, transmits data and waits for `Count` bytes or the timeout (request-response devices), example: `BUS:UART:TRAN? 8,"AT\r\n"`.
+  - `BUS:UART:FRAMe {"<Frame>"}` - sets the frame format as a quoted string `"<data bits><parity><stop bits>"`: data bits `7` or `8`, parity `N` (none), `E` (even) or `O` (odd), stop bits `1` or `2`, case-insensitive. Default is `"8N1"`, example: `BUS:UART:FRAM "8N2"`. Any other value returns error -224.
+  - `BUS:UART:FRAMe?` - frame format query, example output `"8N1"` (quoted, so it can be sent back to `FRAMe`).
+  - `BAUD` and `FRAMe` can be set while the bus is disabled and apply at the next `STATe ON`. On an enabled bus they apply at once and keep the receive buffer.
+  - `BUS:UART:WRITe {<Data>}` - transmits data, 1 to 32 bytes; the command completes when all bytes are sent.
+  - `BUS:UART:READ? [<Count>]` - returns bytes from the receive buffer. With `Count`, 1 to 32, waits until `Count` bytes are received or the 100 ms timeout expires, and returns the bytes received so far. Without `Count`, returns up to 32 buffered bytes immediately, the rest stays in the buffer. Returns "NONE" if no bytes are available. Response format is set by `FORMat[:DATA]`.
+  - `BUS:UART:TRANsfer? {<Count>},{<Data>}` - clears the receive buffer, transmits data and waits for `Count` bytes or the 100 ms timeout (request-response devices), then answers like `READ?`, example: `BUS:UART:TRAN? 4,#H41,#H54,#H0D,#H0A` sends "AT\r\n".
   - `BUS:UART:BUFFer:COUNt?` - query for the number of bytes in the receive buffer, example output "12".
-  - `BUS:UART:BUFFer:CLEar` - clears the receive buffer.
+  - `BUS:UART:BUFFer:CLEar` - clears the receive buffer and the pending receive errors.
+  - `WRITe`, `READ?` and `TRANsfer?` on a disabled bus return error -221. A data byte above 255, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
+  - Receive errors are collected in the background and reported by the next `READ?` or `TRANsfer?`, which still returns the received bytes: -363 if bytes were lost, -362 on a framing error, -361 on a parity error, -360 on noise.
 - Bus error codes (returned by `SYSTem:ERRor[:NEXT]?`):
-  - `-221,"Settings conflict"` - pin is reserved by an enabled bus, a bus whose pins are in use cannot be enabled, the bus is disabled, or the command is not allowed in the current mode.
+  - `-221,"Settings conflict"` - pin is reserved by an enabled bus, a bus whose pins are in use cannot be enabled, the bus is disabled, the command is not allowed in the current mode, or the UART bus is used by the USB-PD tracer.
   - `-222,"Data out of range"` - address, count, frequency or pin number out of range.
   - `-223,"Too much data"` - transfer length exceeds the device buffer.
   - `-224,"Illegal parameter value"` - invalid enumerated value.
   - `-240,"Hardware error"` - arbitration lost to another master, or a misplaced START or STOP on the bus.
   - `-241,"Hardware missing"` - the slave acknowledged neither the address nor a data byte. The peripheral reports one flag for both cases, so they cannot be told apart.
   - `-365,"Time out error"` - the transaction did not complete within 100 ms, for example because a slave stretched the clock. The commands of the bus are served by the USB task, so an unresponsive slave delays the answer to any other command for up to that time.
-  - `311,"UART receive buffer overflow"` - received bytes were lost.
-  - `312,"UART framing error"` - invalid stop bit received.
-  - `313,"UART parity error"` - parity check failed.
+  - `-360,"Communication error"` - UART: noise detected on the received data.
+  - `-361,"Parity error in program message"` - UART: parity check of the received data failed.
+  - `-362,"Framing error in program message"` - UART: invalid stop bit in the received data.
+  - `-363,"Input buffer overrun"` - UART: received bytes were lost, the receive buffer was full or the bytes arrived too fast.
+  - The -360 to -363 errors of the UART bus describe the data received on the bus, not the USB connection to the host.
 - Bus and GPIO state after `*RST` and power-on:
   - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
   - I2C: the bus is disabled and the address width is 7 bits.
+  - UART: the bus is disabled at 115200 baud with a `"8N1"` frame, and the receive buffer is empty.
   - `*SAV` and `*RCL` do not affect bus and GPIO state.
