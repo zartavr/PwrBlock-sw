@@ -166,7 +166,7 @@ uint32_t uart_bus_rx_count(void);
 void uart_bus_rx_clear(void);
 
 /**
- * @brief Get the receive error latched since the buffer was cleared.
+ * @brief Take the receive error latched since the previous call, clearing it.
  *
  * @return UartBusStatus The most severe of UART_BUS_ERR_RX_*, UART_BUS_OK if
  * none.

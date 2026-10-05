@@ -95,7 +95,7 @@ static void uart_rx_errors_report(scpi_t* context)
 {
     int16_t error = 0;
 
-    switch (uart_bus_rx_errors_get()) {
+    switch (uart_bus_rx_errors_take()) {
         case UART_BUS_ERR_RX_OVERRUN: {
             error = SCPI_ERROR_INPUT_BUFFER_OVERRUN;
             break;

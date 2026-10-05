@@ -227,9 +227,13 @@ void uart_bus_rx_clear(void)
     __enable_irq();
 }
 
-UartBusStatus uart_bus_rx_errors_get(void)
+UartBusStatus uart_bus_rx_errors_take(void)
 {
+    __disable_irq();
     uint32_t errors = bus.errors;
+    bus.errors      = 0;
+    __enable_irq();
+
     if (errors & USART_ISR_ORE) {
         return UART_BUS_ERR_RX_OVERRUN;
     }
