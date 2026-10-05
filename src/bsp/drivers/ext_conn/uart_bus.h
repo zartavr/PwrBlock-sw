@@ -28,6 +28,7 @@ typedef enum
     UART_BUS_ERR_DISABLED,    // The bus is disabled
     UART_BUS_ERR_PARAM,       // Baud rate, frame or length out of range
     UART_BUS_ERR_BUSY,        // USART3 is owned by the USB-PD tracer
+    UART_BUS_ERR_TX_FULL,     // No room in the transmit buffer
     UART_BUS_ERR_RX_OVERRUN,  // Received bytes were lost
     UART_BUS_ERR_RX_FRAMING,  // Invalid stop bit
     UART_BUS_ERR_RX_PARITY,   // Parity check failed
@@ -139,12 +140,19 @@ UartBusStatus uart_bus_frame_set(UartBusFrame frame);
 UartBusFrame uart_bus_frame_get(void);
 
 /**
- * @brief Transmit data, returns when all bytes are sent.
+ * @brief Queue data to transmit, returns before the bytes are sent.
+ *
+ * The bytes are copied into the transmit buffer and put on the bus by the
+ * interrupt, so the call does not wait for the transmission. A following
+ * uart_bus_baud_set(), uart_bus_frame_set() or uart_bus_state_set(false) gives
+ * them up to UART_BUS_TIMEOUT_MS to leave the bus and drops what is left.
  *
  * @param data Bytes to be sent.
  * @param len Number of bytes, 1 to UART_BUS_XFER_MAX_LEN (uart_bus_def.h).
- * @return UartBusStatus Result of the transmission, UART_BUS_ERR_DISABLED if
- * the bus is disabled, UART_BUS_ERR_PARAM if the length is out of range.
+ * @return UartBusStatus UART_BUS_OK if the bytes were queued,
+ * UART_BUS_ERR_DISABLED if the bus is disabled, UART_BUS_ERR_PARAM if the
+ * length is out of range, UART_BUS_ERR_TX_FULL if the transmit buffer has no
+ * room for them, because earlier writes are still on the bus.
  */
 UartBusStatus uart_bus_write(const uint8_t* data, uint32_t len);
 
@@ -182,8 +190,9 @@ uint32_t uart_bus_rx_count(void);
 void uart_bus_rx_clear(void);
 
 /**
- * @brief Take the receive errors latched since the previous call.
+ * @brief Get the receive error latched since the receive buffer was cleared.
  *
- * @return uint32_t Mask of UART_BUS_RX_ERR_* bits (uart_bus_def.h), 0 if none.
+ * @return UartBusStatus UART_BUS_ERR_RX_OVERRUN, _RX_FRAMING, _RX_PARITY or
+ * _RX_NOISE, the most severe one latched, UART_BUS_OK if none.
  */
 UartBusStatus uart_bus_rx_errors_take(void);

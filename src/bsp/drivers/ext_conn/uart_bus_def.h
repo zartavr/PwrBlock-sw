@@ -48,3 +48,8 @@
 /// Size of the receive buffer in bytes, a power of two so that the indexes of
 /// the ring wrap with a mask
 #define UART_BUS_RX_BUF_LEN 256
+
+/// Size of the transmit buffer in bytes, a power of two like the receive one.
+/// It holds several transfers of UART_BUS_XFER_MAX_LEN bytes, so that a write
+/// does not have to wait for the previous one to leave the bus
+#define UART_BUS_TX_BUF_LEN 256

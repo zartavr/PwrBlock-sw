@@ -42,124 +42,28 @@ static UartBus bus;
 
 // Ring buffer of the received bytes, filled by the interrupt and drained by
 // the thread of the parser. The indexes run free and are masked on access,
-// each side writes only its own one, and a 16 bit access is atomic, so the
-// ring needs no lock
+// each side writes only its own one, and an aligned 32 bit access is atomic,
+// so the ring needs no lock
 static uint8_t           rx_buf[UART_BUS_RX_BUF_LEN];
-static volatile uint16_t rx_head;
-static volatile uint16_t rx_tail;
+static volatile uint32_t rx_head;
+static volatile uint32_t rx_tail;
 
-/**
- * @brief Get the word length of the peripheral for the stored frame.
- *
- * The word length of the peripheral includes the parity bit.
- *
- * @return uint32_t Word length in the form expected by the HAL.
- */
-static uint32_t uart_bus_word_length(void)
-{
-    bool     parity = (bus.frame.parity != UART_BUS_PARITY_NONE);
-    uint32_t bits   = bus.frame.data_bits + (parity ? 1 : 0);
+// Ring buffer of the bytes to transmit, the other way round: filled by the
+// thread of the parser and drained by the interrupt
+static uint8_t           tx_buf[UART_BUS_TX_BUF_LEN];
+static volatile uint32_t tx_head;
+static volatile uint32_t tx_tail;
 
-    if (bits == 7) {
-        return UART_WORDLENGTH_7B;
-    }
+// Private prototypes
+static uint32_t uart_bus_word_length(void);
+static uint32_t uart_bus_parity(void);
 
-    if (bits == 9) {
-        return UART_WORDLENGTH_9B;
-    }
+static UartBusStatus uart_bus_apply(void);
+static UartBusStatus uart_bus_refresh(void);
 
-    return UART_WORDLENGTH_8B;
-}
-
-/**
- * @brief Get the parity of the peripheral for the stored frame.
- *
- * @return uint32_t Parity in the form expected by the HAL.
- */
-static uint32_t uart_bus_parity(void)
-{
-    switch (bus.frame.parity) {
-        case UART_BUS_PARITY_EVEN: {
-            return UART_PARITY_EVEN;
-        }
-        case UART_BUS_PARITY_ODD: {
-            return UART_PARITY_ODD;
-        }
-        case UART_BUS_PARITY_NONE:
-        default: {
-            return UART_PARITY_NONE;
-        }
-    }
-}
-
-/**
- * @brief Apply the stored configuration to the peripheral.
- *
- * The interrupt of the receiver is enabled last, so the bus has to be marked
- * enabled before the call for the received bytes to be kept.
- *
- * @return UartBusStatus UART_BUS_ERR_BUS if the hardware rejected the setup.
- */
-static UartBusStatus uart_bus_apply(void)
-{
-    HAL_UART_DeInit(&huart3);
-
-    huart3.Instance        = USART3;
-    huart3.Init.BaudRate   = bus.baud;
-    huart3.Init.WordLength = uart_bus_word_length();
-    huart3.Init.StopBits =
-        (bus.frame.stop_bits == 2) ? UART_STOPBITS_2 : UART_STOPBITS_1;
-    huart3.Init.Parity                 = uart_bus_parity();
-    huart3.Init.Mode                   = UART_MODE_TX_RX;
-    huart3.Init.HwFlowCtl              = UART_HWCONTROL_NONE;
-    huart3.Init.OverSampling           = UART_OVERSAMPLING_16;
-    huart3.Init.OneBitSampling         = UART_ONE_BIT_SAMPLE_DISABLE;
-    huart3.Init.ClockPrescaler         = UART_PRESCALER_DIV1;
-    huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-
-    if (HAL_UART_Init(&huart3) != HAL_OK) {
-        return UART_BUS_ERR_BUS;
-    }
-
-    // The FIFO holds the received bytes while the interrupt is delayed, which
-    // matters at the high baud rates
-    if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) !=
-        HAL_OK) {
-        return UART_BUS_ERR_BUS;
-    }
-
-    if (HAL_UARTEx_EnableFifoMode(&huart3) != HAL_OK) {
-        return UART_BUS_ERR_BUS;
-    }
-
-    // The receiver is served by uart_bus_irq_handler() rather than by a
-    // reception of the HAL, which would stop on the first error
-    __HAL_UART_ENABLE_IT(&huart3, UART_IT_PE);
-    __HAL_UART_ENABLE_IT(&huart3, UART_IT_ERR);
-    __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXFNE);
-
-    return UART_BUS_OK;
-}
-
-/**
- * @brief Re-apply the stored configuration if the bus is enabled.
- *
- * @return UartBusStatus Result of the setup.
- */
-static UartBusStatus uart_bus_refresh(void)
-{
-    if (!bus.enabled) {
-        return UART_BUS_OK;
-    }
-
-    UartBusStatus status = uart_bus_apply();
-    if (status != UART_BUS_OK) {
-        bus.enabled = false;
-        HAL_UART_DeInit(&huart3);
-    }
-
-    return status;
-}
+static uint32_t uart_bus_tx_count(void);
+static void     uart_bus_tx_clear(void);
+static void     uart_bus_tx_drain(void);
 
 void uart_bus_init(void)
 {
@@ -171,10 +75,9 @@ void uart_bus_reset(void)
     bus.enabled = false;
     bus.baud    = UART_BUS_BAUD_DEFAULT;
     bus.frame   = FRAME_DEFAULT;
-    bus.errors  = 0,
-
 
     uart_bus_rx_clear();
+    uart_bus_tx_clear();
 
 #ifndef _TRACE
     // The peripheral is brought up by the setup of the board, so a disabled
@@ -197,17 +100,24 @@ UartBusStatus uart_bus_state_set(bool enabled)
     }
 
     if (!enabled) {
+        // Wait for TX finish
+        uart_bus_tx_drain();
+
         bus.enabled = false;
         HAL_UART_DeInit(&huart3);
         uart_bus_rx_clear();
         return UART_BUS_OK;
     }
 
-    // Marked before the setup, the interrupt keeps the received bytes only on
-    // an enabled bus
-    bus.enabled = true;
+    UartBusStatus status = uart_bus_apply();
+    if (status != UART_BUS_OK) {
+        bus.enabled = false;
+        HAL_UART_DeInit(&huart3);
+        return status;
+    }
 
-    return uart_bus_refresh();
+    bus.enabled = true;
+    return status;
 }
 
 bool uart_bus_state_get(void)
@@ -267,25 +177,26 @@ UartBusStatus uart_bus_write(const uint8_t* data, uint32_t len)
         return UART_BUS_ERR_PARAM;
     }
 
-    HAL_StatusTypeDef status = HAL_UART_Transmit(
-        &huart3, (uint8_t*)data, (uint16_t)len, UART_BUS_TIMEOUT_MS
-    );
-
-    if (status == HAL_OK) {
-        return UART_BUS_OK;
+    if ((UART_BUS_TX_BUF_LEN - uart_bus_tx_count()) < len) {
+        return UART_BUS_ERR_TX_FULL;
     }
 
-    if (status == HAL_TIMEOUT) {
-        return UART_BUS_ERR_TIMEOUT;
+    uint32_t head = tx_head;
+    for (uint32_t index = 0; index < len; index++) {
+        tx_buf[head & (UART_BUS_TX_BUF_LEN - 1)] = data[index];
+        head++;
     }
+    tx_head = head;
 
-    return UART_BUS_ERR_BUS;
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_TXFNF);
+
+    return UART_BUS_OK;
 }
 
 uint32_t uart_bus_read(uint8_t* dst, uint32_t max)
 {
     uint32_t count = 0;
-    uint16_t tail  = rx_tail;
+    uint32_t tail  = rx_tail;
 
     while (count < max && tail != rx_head) {
         dst[count] = rx_buf[tail & (UART_BUS_RX_BUF_LEN - 1)];
@@ -312,7 +223,7 @@ uint32_t uart_bus_read_wait(uint8_t* dst, uint32_t count)
 
 uint32_t uart_bus_rx_count(void)
 {
-    return (uint16_t)(rx_head - rx_tail);
+    return rx_head - rx_tail;
 }
 
 void uart_bus_rx_clear(void)
@@ -353,9 +264,23 @@ void uart_bus_irq_handler(void)
             USART_ICR_ORECF | USART_ICR_FECF | USART_ICR_PECF | USART_ICR_NECF;
     }
 
-    // With parity the peripheral leaves the parity bit above the data
-    uint8_t mask = (bus.frame.data_bits == 7) ? 0x7F : 0xFF;
+    // Feed the transmitter while it has room and the buffer has bytes. The
+    // interrupt is disabled on the last one, it would otherwise fire forever
+    if ((uart->CR1 & USART_CR1_TXEIE_TXFNFIE) != 0) {
+        while ((uart->ISR & USART_ISR_TXE_TXFNF) != 0) {
+            uint32_t tail = tx_tail;
 
+            if (tail == tx_head) {
+                __HAL_UART_DISABLE_IT(&huart3, UART_IT_TXFNF);
+                break;
+            }
+
+            uart->TDR = tx_buf[tail & (UART_BUS_TX_BUF_LEN - 1)];
+            tx_tail   = tail + 1;
+        }
+    }
+
+    uint8_t mask = (bus.frame.data_bits == 7) ? 0x7F : 0xFF;
     while ((uart->ISR & USART_ISR_RXNE_RXFNE) != 0) {
         uint8_t byte = (uint8_t)(uart->RDR & mask);
 
@@ -363,8 +288,8 @@ void uart_bus_irq_handler(void)
             continue;
         }
 
-        uint16_t head = rx_head;
-        if ((uint16_t)(head - rx_tail) >= UART_BUS_RX_BUF_LEN) {
+        uint32_t head = rx_head;
+        if ((head - rx_tail) >= UART_BUS_RX_BUF_LEN) {
             errors |= USART_ISR_ORE;
             continue;
         }
@@ -376,4 +301,118 @@ void uart_bus_irq_handler(void)
     if (bus.enabled) {
         bus.errors |= errors;
     }
+}
+
+static uint32_t uart_bus_word_length(void)
+{
+    bool     parity = (bus.frame.parity != UART_BUS_PARITY_NONE);
+    uint32_t bits   = bus.frame.data_bits + (parity ? 1 : 0);
+
+    if (bits == 7) {
+        return UART_WORDLENGTH_7B;
+    }
+
+    if (bits == 9) {
+        return UART_WORDLENGTH_9B;
+    }
+
+    return UART_WORDLENGTH_8B;
+}
+
+static uint32_t uart_bus_parity(void)
+{
+    switch (bus.frame.parity) {
+        case UART_BUS_PARITY_EVEN: {
+            return UART_PARITY_EVEN;
+        }
+        case UART_BUS_PARITY_ODD: {
+            return UART_PARITY_ODD;
+        }
+        case UART_BUS_PARITY_NONE:
+        default: {
+            return UART_PARITY_NONE;
+        }
+    }
+}
+
+static UartBusStatus uart_bus_apply(void)
+{
+    HAL_UART_DeInit(&huart3);
+
+    huart3.Instance        = USART3;
+    huart3.Init.BaudRate   = bus.baud;
+    huart3.Init.WordLength = uart_bus_word_length();
+    huart3.Init.StopBits =
+        (bus.frame.stop_bits == 2) ? UART_STOPBITS_2 : UART_STOPBITS_1;
+    huart3.Init.Parity                 = uart_bus_parity();
+    huart3.Init.Mode                   = UART_MODE_TX_RX;
+    huart3.Init.HwFlowCtl              = UART_HWCONTROL_NONE;
+    huart3.Init.OverSampling           = UART_OVERSAMPLING_16;
+    huart3.Init.OneBitSampling         = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart3.Init.ClockPrescaler         = UART_PRESCALER_DIV1;
+    huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+
+    if (HAL_UART_Init(&huart3) != HAL_OK) {
+        return UART_BUS_ERR_BUS;
+    }
+
+    // The FIFO holds the received bytes while the interrupt is delayed, which
+    // matters at the high baud rates
+    if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) !=
+        HAL_OK) {
+        return UART_BUS_ERR_BUS;
+    }
+
+    if (HAL_UARTEx_EnableFifoMode(&huart3) != HAL_OK) {
+        return UART_BUS_ERR_BUS;
+    }
+
+    // The receiver is served by uart_bus_irq_handler() rather than by a
+    // reception of the HAL, which would stop on the first error
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_PE);
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_ERR);
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXFNE);
+
+    return UART_BUS_OK;
+}
+
+static UartBusStatus uart_bus_refresh(void)
+{
+    if (!bus.enabled) {
+        return UART_BUS_OK;
+    }
+
+    // Make sure that tx_buffer is empty
+    uart_bus_tx_drain();
+    UartBusStatus status = uart_bus_apply();
+    if (status != UART_BUS_OK) {
+        bus.enabled = false;
+        HAL_UART_DeInit(&huart3);
+    }
+
+    return status;
+}
+
+static uint32_t uart_bus_tx_count(void)
+{
+    return tx_head - tx_tail;
+}
+
+static void uart_bus_tx_clear(void)
+{
+    __HAL_UART_DISABLE_IT(&huart3, UART_IT_TXFNF);
+    tx_tail = tx_head;
+}
+
+static void uart_bus_tx_drain(void)
+{
+    // The tick of the kernel is 1 ms
+    uint32_t start = osKernelGetTickCount();
+
+    while (uart_bus_tx_count() != 0 &&
+           (osKernelGetTickCount() - start) < UART_BUS_TIMEOUT_MS) {
+        osDelay(1);
+    }
+
+    uart_bus_tx_clear();
 }

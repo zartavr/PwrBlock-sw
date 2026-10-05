@@ -68,6 +68,10 @@ static scpi_result_t uart_status_result(scpi_t* context, UartBusStatus status)
             error = SCPI_ERROR_DATA_OUT_OF_RANGE;
             break;
         }
+        case UART_BUS_ERR_TX_FULL: {
+            error = SCPI_ERROR_TOO_MUCH_DATA;
+            break;
+        }
         case UART_BUS_ERR_BUS:
         default: {
             error = SCPI_ERROR_HARDWARE_ERROR;
