@@ -205,7 +205,6 @@ static scpi_bool_t uart_frame_parse(const char* text, UartBusFrame* frame)
     switch (DATA) {
         case '7': data_bits = 7; break;
         case '8': data_bits = 8; break;
-        case '9': data_bits = 9; break;
         default: return FALSE;
     }
 
