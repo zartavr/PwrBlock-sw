@@ -1,6 +1,6 @@
 #include "scpi_def.h"
 #include "control/control.h"
-#include "periph_ctl/digital_ctl.h"
+#include "scpi/ext_conn/digital_ctl.h"
 #include "scpi/scpi.h"
 #include <stdio.h>
 #include <stdlib.h>

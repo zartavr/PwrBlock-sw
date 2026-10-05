@@ -21,7 +21,7 @@
 /**
  * @brief Restore the power-on defaults of all pins.
  *
- * Wraps digital_gpio_reset() so that callers outside the periph_ctl backend,
+ * Wraps digital_gpio_reset() so that callers outside the ext_conn driver,
  * e.g. *RST, do not depend on it directly.
  *
  * @param context

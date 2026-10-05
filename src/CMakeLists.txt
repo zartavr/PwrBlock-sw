@@ -1,7 +1,6 @@
 add_subdirectory(usbpd)
 add_subdirectory(scpi)
 add_subdirectory(control)
-add_subdirectory(periph_ctl)
 add_subdirectory(threads)
 add_subdirectory(indication)
 add_subdirectory(bsp)
@@ -22,7 +21,6 @@ target_link_libraries(
            tinyusb
            scpi
            control
-           periph_ctl
            usbpd
            threads
            indication

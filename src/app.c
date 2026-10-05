@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include "bsp/drivers/ext_conn/digital_gpio.h"
 #include "cmsis_os2.h"
 #include "middleware/adc_mgr/adc_mgr.h"
 #include "middleware/i2c_mgr/i2c_mgr.h"
-#include "periph_ctl/digital_gpio.h"
 #include "threads/threads.h"
 
 int app(void)

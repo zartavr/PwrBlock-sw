@@ -15,7 +15,7 @@
  */
 
 #include "digital_ctl.h"
-#include "digital_gpio.h"
+#include "bsp/drivers/ext_conn/digital_gpio.h"
 
 #include <stdio.h>
 #include <string.h>
