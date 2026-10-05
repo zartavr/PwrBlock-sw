@@ -22,7 +22,6 @@
 #include <cmsis_os2.h>
 #include <stm32g0xx_hal.h>
 
-/// Current configuration of the bus
 typedef struct
 {
     bool              enabled;
@@ -31,7 +30,6 @@ typedef struct
     volatile uint32_t errors;
 } UartBus;
 
-/// Frame applied on power-on and by *RST, 8N1
 static const UartBusFrame FRAME_DEFAULT = {
     .data_bits = 8, .parity = UART_BUS_PARITY_NONE, .stop_bits = 1
 };
@@ -40,16 +38,13 @@ extern UART_HandleTypeDef huart3;
 
 static UartBus bus;
 
-// Ring buffer of the received bytes, filled by the interrupt and drained by
-// the thread of the parser. The indexes run free and are masked on access,
-// each side writes only its own one, and an aligned 32 bit access is atomic,
-// so the ring needs no lock
+// Ring buffers, one side is the interrupt and the other the thread of the
+// parser. The indexes run free and are masked on access, each side writes only
+// its own one and an aligned 32 bit access is atomic, so they need no lock
 static uint8_t           rx_buf[UART_BUS_RX_BUF_LEN];
 static volatile uint32_t rx_head;
 static volatile uint32_t rx_tail;
 
-// Ring buffer of the bytes to transmit, the other way round: filled by the
-// thread of the parser and drained by the interrupt
 static uint8_t           tx_buf[UART_BUS_TX_BUF_LEN];
 static volatile uint32_t tx_head;
 static volatile uint32_t tx_tail;
@@ -80,8 +75,7 @@ void uart_bus_reset(void)
     uart_bus_tx_clear();
 
 #ifndef _TRACE
-    // The peripheral is brought up by the setup of the board, so a disabled
-    // bus has to be released rather than just left alone
+    // The board brings the peripheral up, a disabled bus has to release it
     HAL_UART_DeInit(&huart3);
 #endif
 }
@@ -89,7 +83,7 @@ void uart_bus_reset(void)
 UartBusStatus uart_bus_state_set(bool enabled)
 {
 #ifdef _TRACE
-    // The tracer of the USB-PD stack owns USART3 in this build
+    // The tracer owns USART3 in this build
     if (enabled) {
         return UART_BUS_ERR_BUSY;
     }
@@ -210,7 +204,6 @@ uint32_t uart_bus_read(uint8_t* dst, uint32_t max)
 
 uint32_t uart_bus_read_wait(uint8_t* dst, uint32_t count)
 {
-    // The tick of the kernel is 1 ms
     uint32_t start = osKernelGetTickCount();
 
     while (uart_bus_rx_count() < count &&
@@ -264,8 +257,6 @@ void uart_bus_irq_handler(void)
             USART_ICR_ORECF | USART_ICR_FECF | USART_ICR_PECF | USART_ICR_NECF;
     }
 
-    // Feed the transmitter while it has room and the buffer has bytes. The
-    // interrupt is disabled on the last one, it would otherwise fire forever
     if ((uart->CR1 & USART_CR1_TXEIE_TXFNFIE) != 0) {
         while ((uart->ISR & USART_ISR_TXE_TXFNF) != 0) {
             uint32_t tail = tx_tail;
@@ -356,8 +347,6 @@ static UartBusStatus uart_bus_apply(void)
         return UART_BUS_ERR_BUS;
     }
 
-    // The FIFO holds the received bytes while the interrupt is delayed, which
-    // matters at the high baud rates
     if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) !=
         HAL_OK) {
         return UART_BUS_ERR_BUS;
@@ -367,8 +356,7 @@ static UartBusStatus uart_bus_apply(void)
         return UART_BUS_ERR_BUS;
     }
 
-    // The receiver is served by uart_bus_irq_handler() rather than by a
-    // reception of the HAL, which would stop on the first error
+    // Served by uart_bus_irq_handler()
     __HAL_UART_ENABLE_IT(&huart3, UART_IT_PE);
     __HAL_UART_ENABLE_IT(&huart3, UART_IT_ERR);
     __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXFNE);
@@ -406,7 +394,6 @@ static void uart_bus_tx_clear(void)
 
 static void uart_bus_tx_drain(void)
 {
-    // The tick of the kernel is 1 ms
     uint32_t start = osKernelGetTickCount();
 
     while (uart_bus_tx_count() != 0 &&
