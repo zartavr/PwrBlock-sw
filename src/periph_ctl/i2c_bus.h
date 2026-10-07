@@ -102,20 +102,6 @@ I2cBusStatus i2c_bus_freq_set(uint32_t hz);
 uint32_t i2c_bus_freq_get(void);
 
 /**
- * @brief Get min supported frequency of the clock.
- *
- * @return uint32_t Value in hertz.
- */
-uint32_t i2c_bus_freq_min_get(void);
-
-/**
- * @brief Get max supported frequency of the clock.
- *
- * @return uint32_t Value in hertz.
- */
-uint32_t i2c_bus_freq_max_get(void);
-
-/**
  * @brief Set address of the slave, used by the transfers.
  *
  * @param addr Unshifted address of the slave.
@@ -143,13 +129,6 @@ I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width);
  * @return I2cBusAddrWidth Current width.
  */
 I2cBusAddrWidth i2c_bus_addr_width_get(void);
-
-/**
- * @brief Get max address of the slave allowed by the current width.
- *
- * @return uint32_t Unshifted address of the slave.
- */
-uint32_t i2c_bus_addr_max_get(void);
 
 /**
  * @brief Set state of the internal pull-up resistors of SDA and SCL.
@@ -180,20 +159,6 @@ void i2c_bus_timeout_set(uint32_t ms);
  * @return uint32_t Value in milliseconds.
  */
 uint32_t i2c_bus_timeout_get(void);
-
-/**
- * @brief Get min supported timeout of a transaction.
- *
- * @return uint32_t Value in milliseconds.
- */
-uint32_t i2c_bus_timeout_min_get(void);
-
-/**
- * @brief Get max supported timeout of a transaction.
- *
- * @return uint32_t Value in milliseconds.
- */
-uint32_t i2c_bus_timeout_max_get(void);
 
 /**
  * @brief Write data to the slave: START, address + W, data, STOP.
