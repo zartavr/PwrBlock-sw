@@ -17,7 +17,6 @@
 #include "digital_ctl.h"
 #include "bsp/drivers/ext_conn/digital_gpio.h"
 
-#include <stdio.h>
 #include <string.h>
 
 /// Owner of a pin, reported by [SOURce]:DIGital:PIN<n>:FUNCtion?. Buses are
@@ -52,6 +51,147 @@ static const char* const FUNCTION_NAMES[]  = {"GPIO"};
 static const char* const DIRECTION_NAMES[] = {"INP", "OUTP"};
 static const char* const MODE_NAMES[]      = {"PUSH", "ODR"};
 static const char* const PULL_NAMES[]      = {"NONE", "UP", "DOWN"};
+
+// Private function prototypes
+static void digital_name_result(
+    scpi_t* context, const char* const* names, int32_t value
+);
+static scpi_bool_t digital_pin_decode(scpi_t* context, int32_t* pin);
+static scpi_bool_t digital_pin_choice_decode(
+    scpi_t*                  context,
+    const scpi_choice_def_t* choices,
+    int32_t*                 pin,
+    int32_t*                 value
+);
+
+scpi_result_t SCPI_DigitalPinFunctionQ(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    digital_name_result(context, FUNCTION_NAMES, DIGITAL_FUNCTION_GPIO);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalCountQ(scpi_t* context)
+{
+    SCPI_ResultUInt32(context, DIGITAL_PIN_COUNT);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinDirection(scpi_t* context)
+{
+    int32_t pin   = 0;
+    int32_t value = 0;
+    if (!digital_pin_choice_decode(context, DIRECTION_CHOICES, &pin, &value)) {
+        return SCPI_RES_ERR;
+    }
+
+    digital_gpio_direction_set((uint32_t)pin, (DigitalDirection)value);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinDirectionQ(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    DigitalDirection direction = digital_gpio_direction_get((uint32_t)pin);
+
+    digital_name_result(context, DIRECTION_NAMES, (int32_t)direction);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinMode(scpi_t* context)
+{
+    int32_t pin   = 0;
+    int32_t value = 0;
+    if (!digital_pin_choice_decode(context, MODE_CHOICES, &pin, &value)) {
+        return SCPI_RES_ERR;
+    }
+
+    digital_gpio_mode_set((uint32_t)pin, (DigitalMode)value);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinModeQ(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    DigitalMode mode = digital_gpio_mode_get((uint32_t)pin);
+
+    digital_name_result(context, MODE_NAMES, (int32_t)mode);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinPull(scpi_t* context)
+{
+    int32_t pin   = 0;
+    int32_t value = 0;
+    if (!digital_pin_choice_decode(context, PULL_CHOICES, &pin, &value)) {
+        return SCPI_RES_ERR;
+    }
+
+    digital_gpio_pull_set((uint32_t)pin, (DigitalPull)value);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    DigitalPull pull = digital_gpio_pull_get((uint32_t)pin);
+
+    digital_name_result(context, PULL_NAMES, (int32_t)pull);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinLevel(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    bool state = false;
+
+    // Read first parameter if present
+    if (!SCPI_ParamBool(context, &state, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+
+    digital_gpio_level_set((uint32_t)pin, state);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
+{
+    int32_t pin = 0;
+    if (!digital_pin_decode(context, &pin)) {
+        return SCPI_RES_ERR;
+    }
+
+    SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_DigitalReset(scpi_t* context)
+{
+    (void)context;
+
+    digital_gpio_reset();
+    return SCPI_RES_OK;
+}
 
 /**
  * @brief Decode <n> suffix of the PIN<n> header into a pin number.
@@ -117,134 +257,4 @@ static void digital_name_result(
 {
     const char* name = names[value];
     SCPI_ResultCharacters(context, name, strlen(name));
-}
-
-scpi_result_t SCPI_DigitalCountQ(scpi_t* context)
-{
-    SCPI_ResultUInt32(context, DIGITAL_PIN_COUNT);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinFunctionQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    digital_name_result(context, FUNCTION_NAMES, DIGITAL_FUNCTION_GPIO);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinDirection(scpi_t* context)
-{
-    int32_t pin   = 0;
-    int32_t value = 0;
-    if (!digital_pin_choice_decode(context, DIRECTION_CHOICES, &pin, &value)) {
-        return SCPI_RES_ERR;
-    }
-
-    digital_gpio_direction_set((uint32_t)pin, (DigitalDirection)value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinDirectionQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    const DigitalDirection direction =
-        digital_gpio_direction_get((uint32_t)pin);
-
-    digital_name_result(context, DIRECTION_NAMES, (int32_t)direction);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinMode(scpi_t* context)
-{
-    int32_t pin   = 0;
-    int32_t value = 0;
-    if (!digital_pin_choice_decode(context, MODE_CHOICES, &pin, &value)) {
-        return SCPI_RES_ERR;
-    }
-
-    digital_gpio_mode_set((uint32_t)pin, (DigitalMode)value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinModeQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    const DigitalMode mode = digital_gpio_mode_get((uint32_t)pin);
-
-    digital_name_result(context, MODE_NAMES, (int32_t)mode);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinPull(scpi_t* context)
-{
-    int32_t pin   = 0;
-    int32_t value = 0;
-    if (!digital_pin_choice_decode(context, PULL_CHOICES, &pin, &value)) {
-        return SCPI_RES_ERR;
-    }
-
-    digital_gpio_pull_set((uint32_t)pin, (DigitalPull)value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinPullQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    const DigitalPull pull = digital_gpio_pull_get((uint32_t)pin);
-
-    digital_name_result(context, PULL_NAMES, (int32_t)pull);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinLevel(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    bool state = false;
-
-    // Read first parameter if present
-    if (!SCPI_ParamBool(context, &state, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    digital_gpio_level_set((uint32_t)pin, state);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalPinLevelQ(scpi_t* context)
-{
-    int32_t pin = 0;
-    if (!digital_pin_decode(context, &pin)) {
-        return SCPI_RES_ERR;
-    }
-
-    SCPI_ResultBool(context, digital_gpio_level_get((uint32_t)pin));
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_DigitalReset(scpi_t* context)
-{
-    (void)context;
-
-    digital_gpio_reset();
-    return SCPI_RES_OK;
 }

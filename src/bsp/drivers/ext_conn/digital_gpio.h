@@ -23,21 +23,18 @@
 /// of the DIGital subsystem corresponds to the IO<n> label on the connector.
 #define DIGITAL_PIN_COUNT 7
 
-/// Direction of a pin
 typedef enum
 {
     DIGITAL_DIRECTION_INPUT = 0,
     DIGITAL_DIRECTION_OUTPUT,
 } DigitalDirection;
 
-/// Output driver type of a pin
 typedef enum
 {
     DIGITAL_MODE_PUSHPULL = 0,
     DIGITAL_MODE_ODRAIN,
 } DigitalMode;
 
-/// Internal pull resistor of a pin
 typedef enum
 {
     DIGITAL_PULL_NONE = 0,
@@ -52,8 +49,7 @@ typedef enum
  * Must be called before the SCPI parser starts to serve DIGital commands.
  *
  * The configuration calls of this module do a read-modify-write of the port
- * registers, so all of them are expected to be called from a single thread,
- * the one running the SCPI parser.
+ * registers.
  */
 void digital_gpio_init(void);
 

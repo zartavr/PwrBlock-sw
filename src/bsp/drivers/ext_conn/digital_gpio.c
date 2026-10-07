@@ -25,11 +25,6 @@ typedef struct
     uint16_t      mask;
 } DigitalPinHw;
 
-/**
- * Current configuration of a GPIO of the external connector. The level is the
- * output level requested by digital_gpio_level_set(), it is kept for an input
- * pin as well and is driven when the pin becomes an output.
- */
 typedef struct
 {
     DigitalDirection direction;
@@ -38,11 +33,7 @@ typedef struct
     bool             level;
 } DigitalPinCfg;
 
-/**
- * Pins of the external connector, indexed by pin number - 1. The IO<n> label
- * on the connector is wired to the GPIO<n> net of the board, IO7 is the
- * GPIO8 net.
- */
+// Pins of the external connector, indexed by pin number - 1.
 static const DigitalPinHw PIN_HW[DIGITAL_PIN_COUNT] = {
     {GPIOD, GPIO_PIN_0 }, // IO1
     {GPIOD, GPIO_PIN_1 }, // IO2
@@ -55,84 +46,10 @@ static const DigitalPinHw PIN_HW[DIGITAL_PIN_COUNT] = {
 
 static DigitalPinCfg pin_cfg[DIGITAL_PIN_COUNT];
 
-/**
- * @brief Check a pin number and convert it into an index of the pin tables.
- *
- * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
- * @param index Index of the pin, pin number - 1.
- * @return bool false if the pin number is out of range.
- */
-static bool digital_pin_index(uint32_t pin, uint32_t* index)
-{
-    if (pin < 1 || pin > DIGITAL_PIN_COUNT) {
-        return false;
-    }
-
-    *index = pin - 1;
-    return true;
-}
-
-/**
- * @brief Drive the level of a pin.
- *
- * Has no effect on the pin while it is an input, the output register keeps
- * the level until the pin is switched to output.
- *
- * @param index Index of the pin.
- * @param level Level to drive.
- */
-static void digital_pin_drive(uint32_t index, bool level)
-{
-    HAL_GPIO_WritePin(
-        PIN_HW[index].port,
-        PIN_HW[index].mask,
-        level ? GPIO_PIN_SET : GPIO_PIN_RESET
-    );
-}
-
-/**
- * @brief Apply the stored configuration of a pin to the port registers.
- *
- * @param index Index of the pin.
- */
-static void digital_pin_apply(uint32_t index)
-{
-    const DigitalPinCfg* cfg  = &pin_cfg[index];
-    GPIO_InitTypeDef     init = {0};
-
-    init.Pin   = PIN_HW[index].mask;
-    init.Speed = GPIO_SPEED_FREQ_LOW;
-
-    switch (cfg->pull) {
-        case DIGITAL_PULL_UP: {
-            init.Pull = GPIO_PULLUP;
-            break;
-        }
-        case DIGITAL_PULL_DOWN: {
-            init.Pull = GPIO_PULLDOWN;
-            break;
-        }
-        case DIGITAL_PULL_NONE:
-        default: {
-            init.Pull = GPIO_NOPULL;
-            break;
-        }
-    }
-
-    if (cfg->direction == DIGITAL_DIRECTION_OUTPUT) {
-        init.Mode = (cfg->mode == DIGITAL_MODE_ODRAIN) ? GPIO_MODE_OUTPUT_OD :
-                                                         GPIO_MODE_OUTPUT_PP;
-    }
-    else {
-        init.Mode = GPIO_MODE_INPUT;
-    }
-
-    // Load the output register before the mode is applied, so switching a pin
-    // to output cannot emit a pulse of the level left by a previous setup
-    digital_pin_drive(index, cfg->level);
-
-    HAL_GPIO_Init(PIN_HW[index].port, &init);
-}
+// Private function prototypes
+static bool digital_pin_index(uint32_t pin, uint32_t* index);
+static void digital_pin_drive(uint32_t index, bool level);
+static void digital_pin_apply(uint32_t index);
 
 void digital_gpio_init(void)
 {
@@ -237,4 +154,83 @@ bool digital_gpio_level_get(uint32_t pin)
 
     return HAL_GPIO_ReadPin(PIN_HW[index].port, PIN_HW[index].mask) ==
            GPIO_PIN_SET;
+}
+
+/**
+ * @brief Check a pin number and convert it into an index of the pin tables.
+ *
+ * @param pin Pin number, 1 to DIGITAL_PIN_COUNT.
+ * @param index Index of the pin, pin number - 1.
+ * @return bool false if the pin number is out of range.
+ */
+static bool digital_pin_index(uint32_t pin, uint32_t* index)
+{
+    if (pin < 1 || pin > DIGITAL_PIN_COUNT) {
+        return false;
+    }
+
+    *index = pin - 1;
+    return true;
+}
+
+/**
+ * @brief Drive the level of a pin.
+ *
+ * Has no effect on the pin while it is an input, the output register keeps
+ * the level until the pin is switched to output.
+ *
+ * @param index Index of the pin.
+ * @param level Level to drive.
+ */
+static void digital_pin_drive(uint32_t index, bool level)
+{
+    HAL_GPIO_WritePin(
+        PIN_HW[index].port,
+        PIN_HW[index].mask,
+        level ? GPIO_PIN_SET : GPIO_PIN_RESET
+    );
+}
+
+/**
+ * @brief Apply the stored configuration of a pin to the port registers.
+ *
+ * @param index Index of the pin.
+ */
+static void digital_pin_apply(uint32_t index)
+{
+    const DigitalPinCfg* cfg  = &pin_cfg[index];
+    GPIO_InitTypeDef     init = {0};
+
+    init.Pin   = PIN_HW[index].mask;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
+
+    switch (cfg->pull) {
+        case DIGITAL_PULL_UP: {
+            init.Pull = GPIO_PULLUP;
+            break;
+        }
+        case DIGITAL_PULL_DOWN: {
+            init.Pull = GPIO_PULLDOWN;
+            break;
+        }
+        case DIGITAL_PULL_NONE:
+        default: {
+            init.Pull = GPIO_NOPULL;
+            break;
+        }
+    }
+
+    if (cfg->direction == DIGITAL_DIRECTION_OUTPUT) {
+        init.Mode = (cfg->mode == DIGITAL_MODE_ODRAIN) ? GPIO_MODE_OUTPUT_OD :
+                                                         GPIO_MODE_OUTPUT_PP;
+    }
+    else {
+        init.Mode = GPIO_MODE_INPUT;
+    }
+
+    // Load the output register before the mode is applied, so switching a pin
+    // to output cannot emit a pulse of the level left by a previous setup
+    digital_pin_drive(index, cfg->level);
+
+    HAL_GPIO_Init(PIN_HW[index].port, &init);
 }
