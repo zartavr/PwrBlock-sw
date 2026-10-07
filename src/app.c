@@ -15,10 +15,10 @@
  */
 
 #include "bsp/drivers/ext_conn/digital_gpio.h"
+#include "bsp/drivers/ext_conn/i2c_bus.h"
 #include "cmsis_os2.h"
 #include "middleware/adc_mgr/adc_mgr.h"
 #include "middleware/i2c_mgr/i2c_mgr.h"
-#include "periph_ctl/i2c_bus.h"
 #include "threads/threads.h"
 
 int app(void)

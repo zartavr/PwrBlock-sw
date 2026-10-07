@@ -16,9 +16,9 @@
 
 #include "i2c_ctl.h"
 
-#include "bus_format.h"
-#include "i2c_bus.h"
-#include "i2c_bus_def.h"
+#include "bsp/drivers/ext_conn/i2c_bus.h"
+#include "bsp/drivers/ext_conn/i2c_bus_def.h"
+#include "scpi/bus_format.h"
 
 // Buffers of the transfers. The commands are served from the USB device task,
 // whose stack is too small to carry them, and only that task touches them

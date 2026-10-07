@@ -21,8 +21,8 @@
 /**
  * @brief Restore the power-on defaults of the I2C bus.
  *
- * Wraps i2c_bus_reset() so that callers outside the periph_ctl backend,
- * e.g. *RST, do not depend on it directly.
+ * Wraps i2c_bus_reset() so that callers outside the bsp/drivers/ext_conn
+ * backend, e.g. *RST, do not depend on it directly.
  *
  * @param context
  * @return scpi_result_t

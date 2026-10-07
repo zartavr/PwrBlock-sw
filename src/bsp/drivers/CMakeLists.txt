@@ -11,4 +11,5 @@ target_sources(
               24aa02/24aa02.c
               exti/exti.c
               ext_conn/digital_gpio.c
+              ext_conn/i2c_bus.c
 )
