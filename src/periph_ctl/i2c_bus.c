@@ -37,22 +37,11 @@
  */
 #define I2C_BUS_TIMING_100_KHZ 0x10B17DB5
 
-/**
- * Pins of the bus on the external connector, they are dedicated to it and are
- * not shared with the GPIO subsystem. The labels of the board are I2C2_SCL
- * and I2C2_SDA.
- */
-#define I2C2_SCL_GPIO_Port GPIOA
-#define I2C2_SCL_Pin       GPIO_PIN_7
-#define I2C2_SDA_GPIO_Port GPIOB
-#define I2C2_SDA_Pin       GPIO_PIN_4
-
 /// Current configuration of the bus
 typedef struct
 {
     bool            enabled;
     I2cBusAddrWidth width;
-    bool            pullup;
 } I2cBusCfg;
 
 extern I2C_HandleTypeDef hi2c2;
@@ -117,28 +106,6 @@ static I2cBusStatus i2c_bus_status(HAL_StatusTypeDef status)
 }
 
 /**
- * @brief Apply the pull resistor setup to SDA and SCL.
- *
- * The pins keep the alternate function of the peripheral and the open drain
- * driver, only the pull resistor changes.
- */
-static void i2c_bus_pullup_apply(void)
-{
-    GPIO_InitTypeDef init = {0};
-
-    init.Mode      = GPIO_MODE_AF_OD;
-    init.Speed     = GPIO_SPEED_FREQ_LOW;
-    init.Alternate = GPIO_AF8_I2C2;
-    init.Pull      = cfg.pullup ? GPIO_PULLUP : GPIO_NOPULL;
-
-    init.Pin = I2C2_SCL_Pin;
-    HAL_GPIO_Init(I2C2_SCL_GPIO_Port, &init);
-
-    init.Pin = I2C2_SDA_Pin;
-    HAL_GPIO_Init(I2C2_SDA_GPIO_Port, &init);
-}
-
-/**
  * @brief Apply the stored configuration to the peripheral.
  *
  * @return I2cBusStatus I2C_BUS_ERR_BUS if the hardware rejected the setup.
@@ -172,10 +139,6 @@ static I2cBusStatus i2c_bus_apply(void)
         return I2C_BUS_ERR_BUS;
     }
 
-    // The init of the HAL reconfigures the pins, so the pull resistors are
-    // restored after it
-    i2c_bus_pullup_apply();
-
     return I2C_BUS_OK;
 }
 
@@ -202,7 +165,6 @@ void i2c_bus_reset(void)
 {
     cfg.enabled    = false;
     cfg.width      = I2C_BUS_WIDTH_7BIT;
-    cfg.pullup     = false;
 
     // The peripheral is brought up by the setup of the board, so a disabled
     // bus has to be released rather than just left alone
@@ -246,22 +208,6 @@ I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
 I2cBusAddrWidth i2c_bus_addr_width_get(void)
 {
     return cfg.width;
-}
-
-I2cBusStatus i2c_bus_pullup_set(bool enabled)
-{
-    cfg.pullup = enabled;
-
-    if (cfg.enabled) {
-        i2c_bus_pullup_apply();
-    }
-
-    return I2C_BUS_OK;
-}
-
-bool i2c_bus_pullup_get(void)
-{
-    return cfg.pullup;
 }
 
 I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)

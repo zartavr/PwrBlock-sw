@@ -58,8 +58,8 @@ void i2c_bus_init(void);
 /**
  * @brief Restore the power-on defaults of the bus, used by *RST.
  *
- * The bus becomes disabled with an address width of 7 bits, without internal
- * pull-up resistors. The clock of the bus is fixed at 100 kHz.
+ * The bus becomes disabled with an address width of 7 bits. The clock of the
+ * bus is fixed at 100 kHz.
  */
 void i2c_bus_reset(void);
 
@@ -93,22 +93,6 @@ I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width);
  * @return I2cBusAddrWidth Current width.
  */
 I2cBusAddrWidth i2c_bus_addr_width_get(void);
-
-/**
- * @brief Set state of the internal pull-up resistors of SDA and SCL.
- *
- * @param enabled True - the resistors are connected, false - disconnected.
- * @return I2cBusStatus I2C_BUS_OK, the setup cannot fail.
- */
-I2cBusStatus i2c_bus_pullup_set(bool enabled);
-
-/**
- * @brief Get state of the internal pull-up resistors of SDA and SCL.
- *
- * @return true The resistors are connected.
- * @return false The resistors are disconnected.
- */
-bool i2c_bus_pullup_get(void);
 
 /**
  * @brief Write data to a slave: START, address + W, data, STOP.

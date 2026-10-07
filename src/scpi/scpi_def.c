@@ -305,14 +305,6 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_I2cAddressWidthQ,
      },
     {
-     .pattern  = "BUS:I2C:PULLup",
-     .callback = SCPI_I2cPullup,
-     },
-    {
-     .pattern  = "BUS:I2C:PULLup?",
-     .callback = SCPI_I2cPullupQ,
-     },
-    {
      .pattern  = "BUS:I2C:WRITe",
      .callback = SCPI_I2cWrite,
      },
