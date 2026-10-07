@@ -171,15 +171,6 @@ scpi_result_t SCPI_I2cReadQ(scpi_t* context);
 scpi_result_t SCPI_I2cTransferQ(scpi_t* context);
 
 /**
- * BUS:I2C:SCAN?
- * @brief This query returns the addresses of all slaves that acknowledged.
- *
- * @param context
- * @return scpi_result_t
- */
-scpi_result_t SCPI_I2cScanQ(scpi_t* context);
-
-/**
  * BUS:I2C:RECover
  * @brief Recover the bus: generate up to nine clock pulses followed by a STOP
  * to release SDA held low by a slave.

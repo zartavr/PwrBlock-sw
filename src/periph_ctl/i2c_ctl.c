@@ -19,20 +19,14 @@
 #include "bus_format.h"
 #include "i2c_bus.h"
 
-#include <string.h>
-
 /// Widths of the slave address accepted by BUS:I2C:ADDRess:WIDTh
 #define I2C_CTL_WIDTH_7BIT  7
 #define I2C_CTL_WIDTH_10BIT 10
-
-/// Reply of a scan that no slave answered
-#define I2C_CTL_SCAN_NONE "NONE"
 
 // Buffers of the transfers. The commands are served from the USB device task,
 // whose stack is too small to carry them, and only that task touches them
 static uint8_t tx_buffer[I2C_BUS_XFER_MAX_LEN];
 static uint8_t rx_buffer[I2C_BUS_XFER_MAX_LEN];
-static uint8_t scan_buffer[I2C_BUS_SCAN_MAX_FOUND];
 
 /**
  * @brief Report a result of the bus through the error queue.
@@ -380,36 +374,6 @@ scpi_result_t SCPI_I2cTransferQ(scpi_t* context)
     }
 
     bus_data_result(context, rx_buffer, count);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_I2cScanQ(scpi_t* context)
-{
-    if (!i2c_enabled_check(context)) {
-        return SCPI_RES_ERR;
-    }
-
-    uint32_t found = 0;
-
-    const I2cBusStatus status =
-        i2c_bus_scan(scan_buffer, I2C_BUS_SCAN_MAX_FOUND, &found);
-
-    if (status != I2C_BUS_OK) {
-        return i2c_status_result(context, status);
-    }
-
-    if (found == 0) {
-        SCPI_ResultCharacters(
-            context, I2C_CTL_SCAN_NONE, strlen(I2C_CTL_SCAN_NONE)
-        );
-        return SCPI_RES_OK;
-    }
-
-    // An address is not payload of the bus, so it ignores FORMat[:DATA]
-    for (uint32_t index = 0; index < found; index++) {
-        bus_byte_result_hex(context, scan_buffer[index]);
-    }
-
     return SCPI_RES_OK;
 }
 
