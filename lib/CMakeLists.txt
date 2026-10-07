@@ -78,8 +78,4 @@ target_sources(
             scpi_parser/libscpi/src/utils.c
 )
 target_include_directories(scpi_parser SYSTEM PUBLIC scpi_parser/libscpi/inc)
-
-# libscpi keeps only a minimal error list on bare metal targets. The SCPI
-# interface of this device reports -221, -222 and -223, so the full list is
-# needed. Must be PUBLIC: the error codes are an enum in a public header.
 target_compile_definitions(scpi_parser PUBLIC USE_FULL_ERROR_LIST=1)
