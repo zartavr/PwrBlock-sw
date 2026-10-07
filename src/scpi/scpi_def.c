@@ -1,5 +1,7 @@
 #include "scpi_def.h"
 #include "control/control.h"
+#include "periph_ctl/bus_format.h"
+#include "periph_ctl/i2c_ctl.h"
 #include "scpi/ext_conn/digital_ctl.h"
 #include "scpi/scpi.h"
 #include <stdio.h>
@@ -275,6 +277,86 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_DigitalPinLevelQ,
      },
 
+    /* FORMat subsystem */
+    {
+     .pattern  = "FORMat[:DATA]",
+     .callback = SCPI_BusFormat,
+     },
+    {
+     .pattern  = "FORMat[:DATA]?",
+     .callback = SCPI_BusFormatQ,
+     },
+
+    /* BUS subsystem */
+    {
+     .pattern  = "BUS:I2C:STATe",
+     .callback = SCPI_I2cState,
+     },
+    {
+     .pattern  = "BUS:I2C:STATe?",
+     .callback = SCPI_I2cStateQ,
+     },
+    {
+     .pattern  = "BUS:I2C:FREQuency",
+     .callback = SCPI_I2cFrequency,
+     },
+    {
+     .pattern  = "BUS:I2C:FREQuency?",
+     .callback = SCPI_I2cFrequencyQ,
+     },
+    {
+     .pattern  = "BUS:I2C:ADDRess",
+     .callback = SCPI_I2cAddress,
+     },
+    {
+     .pattern  = "BUS:I2C:ADDRess?",
+     .callback = SCPI_I2cAddressQ,
+     },
+    {
+     .pattern  = "BUS:I2C:ADDRess:WIDTh",
+     .callback = SCPI_I2cAddressWidth,
+     },
+    {
+     .pattern  = "BUS:I2C:ADDRess:WIDTh?",
+     .callback = SCPI_I2cAddressWidthQ,
+     },
+    {
+     .pattern  = "BUS:I2C:PULLup",
+     .callback = SCPI_I2cPullup,
+     },
+    {
+     .pattern  = "BUS:I2C:PULLup?",
+     .callback = SCPI_I2cPullupQ,
+     },
+    {
+     .pattern  = "BUS:I2C:TIMEout",
+     .callback = SCPI_I2cTimeout,
+     },
+    {
+     .pattern  = "BUS:I2C:TIMEout?",
+     .callback = SCPI_I2cTimeoutQ,
+     },
+    {
+     .pattern  = "BUS:I2C:WRITe",
+     .callback = SCPI_I2cWrite,
+     },
+    {
+     .pattern  = "BUS:I2C:READ?",
+     .callback = SCPI_I2cReadQ,
+     },
+    {
+     .pattern  = "BUS:I2C:TRANsfer?",
+     .callback = SCPI_I2cTransferQ,
+     },
+    {
+     .pattern  = "BUS:I2C:SCAN?",
+     .callback = SCPI_I2cScanQ,
+     },
+    {
+     .pattern  = "BUS:I2C:RECover",
+     .callback = SCPI_I2cRecover,
+     },
+
     SCPI_CMD_LIST_END
 };
 
@@ -329,6 +411,8 @@ scpi_result_t SCPI_Reset(scpi_t* context)
     (void)context;
 
     SCPI_DigitalReset(context);
+    SCPI_BusFormatReset(context);
+    SCPI_I2cReset(context);
 
     return SCPI_RES_OK;
 }
