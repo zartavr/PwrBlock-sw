@@ -20,7 +20,6 @@
 #include <stdint.h>
 
 /// Response format of the read queries of all buses, set by FORMat[:DATA].
-/// The setting is global, every bus of the external connector shares it.
 typedef enum
 {
     BUS_FORMAT_ASCII = 0,  // Decimal bytes, "80,1,255"
@@ -37,8 +36,6 @@ BusFormat bus_format_get(void);
 
 /**
  * @brief Restore the power-on default of the response format, used by *RST.
- *
- * The default is BUS_FORMAT_HEX.
  */
 void bus_format_reset(void);
 
@@ -70,9 +67,6 @@ void bus_data_result(scpi_t* context, const uint8_t* data, uint32_t len);
 
 /**
  * @brief Restore the power-on default of the response format.
- *
- * Wraps bus_format_reset() so that callers outside the periph_ctl backend,
- * e.g. *RST, do not depend on it directly.
  *
  * @param context
  * @return scpi_result_t

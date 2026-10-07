@@ -18,7 +18,6 @@
 
 #include <string.h>
 
-/// Response format applied on power-on and by *RST
 #define BUS_FORMAT_DEFAULT BUS_FORMAT_INT
 
 // Parameter patterns, used to decode an enumerated value of a command
@@ -33,6 +32,9 @@ static const scpi_choice_def_t FORMAT_CHOICES[] = {
 static const char* const FORMAT_NAMES[] = {"ASC", "HEX", "INT"};
 
 static BusFormat format = BUS_FORMAT_DEFAULT;
+
+// Private function prototypes
+static void bus_byte_result_hex(scpi_t* context, uint8_t value);
 
 BusFormat bus_format_get(void)
 {
@@ -99,23 +101,6 @@ scpi_bool_t bus_data_param(
     return TRUE;
 }
 
-/**
- * @brief Append a byte to a reply as a pair of hexadecimal digits, "#H01".
- *
- * @param context
- * @param value Byte to reply.
- */
-static void bus_byte_result_hex(scpi_t* context, uint8_t value)
-{
-    static const char DIGITS[] = "0123456789ABCDEF";
-
-    // The parser drops the leading zero of a hexadecimal result, while the
-    // interface reports a byte as a pair of digits
-    const char text[] = {'#', 'H', DIGITS[value >> 4], DIGITS[value & 0x0F]};
-
-    SCPI_ResultCharacters(context, text, sizeof(text));
-}
-
 void bus_data_result(scpi_t* context, const uint8_t* data, uint32_t len)
 {
     switch (format) {
@@ -168,4 +153,21 @@ scpi_result_t SCPI_BusFormatQ(scpi_t* context)
 
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
+}
+
+/**
+ * @brief Append a byte to a reply as a pair of hexadecimal digits, "#H01".
+ *
+ * @param context
+ * @param value Byte to reply.
+ */
+static void bus_byte_result_hex(scpi_t* context, uint8_t value)
+{
+    static const char DIGITS[] = "0123456789ABCDEF";
+
+    // The parser drops the leading zero of a hexadecimal result, while the
+    // interface reports a byte as a pair of digits
+    const char text[] = {'#', 'H', DIGITS[value >> 4], DIGITS[value & 0x0F]};
+
+    SCPI_ResultCharacters(context, text, sizeof(text));
 }
