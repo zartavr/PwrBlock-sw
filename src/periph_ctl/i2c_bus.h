@@ -19,11 +19,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/// Maximum number of data bytes of a single transfer. The reply of a read is
-/// built in the output buffer of the SCPI parser, and a byte costs up to five
-/// characters of it in the hexadecimal response format.
-#define I2C_BUS_XFER_MAX_LEN 32
-
 /// Result of an operation of the bus
 typedef enum
 {
@@ -32,26 +27,30 @@ typedef enum
     I2C_BUS_ERR_TIMEOUT,   // Transaction timeout, or a stretched clock
     I2C_BUS_ERR_BUS,       // Arbitration lost, bus error or overrun
     I2C_BUS_ERR_DISABLED,  // The bus is disabled
-    I2C_BUS_ERR_PARAM,     // Value is not supported by the hardware
+    I2C_BUS_ERR_PARAM,     // Address or length out of range
 } I2cBusStatus;
 
 /// Width of the slave address
 typedef enum
 {
-    I2C_BUS_WIDTH_7BIT = 0,
-    I2C_BUS_WIDTH_10BIT,
+    I2C_BUS_WIDTH_7BIT  = 7,
+    I2C_BUS_WIDTH_10BIT = 10,
 } I2cBusAddrWidth;
 
 /**
  * @brief Init the I2C bus of the external connector.
  *
+ * The bus is I2C2 on dedicated pins, SCL on PA7 and SDA on PB4, not shared
+ * with the GPIO subsystem. It runs as a master at a fixed 100 kHz clock, with
+ * no internal pull-up resistors, so the bus needs external ones.
+ *
  * Applies the power-on defaults, which leave the bus disabled. Must be called
  * before the SCPI parser starts to serve BUS:I2C commands.
  *
  * The transfers of this module block the calling thread until they complete
- * or a fixed transaction timeout of 100 ms expires, and its configuration
- * calls do a read-modify-write of the peripheral, so all of them are expected
- * to be called from a single thread, the one running the SCPI parser.
+ * or the fixed transaction timeout of I2C_BUS_TIMEOUT_MS expires, and its
+ * configuration calls re-initialize the peripheral, so all of them are
+ * expected to be called from a single thread, the one running the SCPI parser.
  */
 void i2c_bus_init(void);
 
@@ -82,6 +81,10 @@ bool i2c_bus_state_get(void);
 /**
  * @brief Set width of the slave address.
  *
+ * May be set while the bus is disabled, the width then applies at the next
+ * enable. On an enabled bus the peripheral is re-initialized with the new
+ * addressing mode at once.
+ *
  * @param width Width to apply.
  * @return I2cBusStatus I2C_BUS_ERR_BUS if the hardware rejected the setup.
  */
@@ -99,9 +102,10 @@ I2cBusAddrWidth i2c_bus_addr_width_get(void);
  *
  * @param addr Unshifted address of the slave, within the current width.
  * @param data Bytes to be written.
- * @param len Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
- * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_PARAM if the
- * address or the length is out of range.
+ * @param len Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN (i2c_bus_def.h).
+ * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_DISABLED if the
+ * bus is disabled, I2C_BUS_ERR_PARAM if the address or the length is out of
+ * range.
  */
 I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len);
 
@@ -110,8 +114,9 @@ I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len);
  *
  * @param addr Unshifted address of the slave, within the current width.
  * @param dst Destination of the read bytes.
- * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
- * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_PARAM if the
- * address or the count is out of range.
+ * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN (i2c_bus_def.h).
+ * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_DISABLED if the
+ * bus is disabled, I2C_BUS_ERR_PARAM if the address or the count is out of
+ * range.
  */
 I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count);

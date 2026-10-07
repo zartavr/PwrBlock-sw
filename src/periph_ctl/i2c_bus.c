@@ -20,23 +20,6 @@
 
 #include <stm32g0xx_hal.h>
 
-/// Timeout of a transaction in milliseconds, including a clock stretched by a
-/// slave. The commands are served from the USB device task, so it also bounds
-/// how long an unresponsive slave can delay the answer to any other command.
-#define I2C_BUS_TIMEOUT_MS 100
-
-/**
- * TIMINGR value of the peripheral, the clock of the bus is fixed at 100 kHz.
- * I2C2 is clocked from PCLK1 at 64 MHz, so a prescaled tick is
- * t_PRESC = (PRESC + 1) / 64 MHz and the period of the clock is
- * (SCLL + 1 + SCLH + 1) * t_PRESC plus the rise and fall times.
- *
- * The value is the one CubeMX generated for MX_I2C2_Init(): PRESC = 1,
- * SCLDEL = 0xB, SDADEL = 1, SCLH = 125, SCLL = 181, that is 126 * 31.25 ns high
- * and 182 * 31.25 ns low.
- */
-#define I2C_BUS_TIMING_100_KHZ 0x10B17DB5
-
 /// Current configuration of the bus
 typedef struct
 {
@@ -163,8 +146,8 @@ void i2c_bus_init(void)
 
 void i2c_bus_reset(void)
 {
-    cfg.enabled    = false;
-    cfg.width      = I2C_BUS_WIDTH_7BIT;
+    cfg.enabled = false;
+    cfg.width   = I2C_BUS_WIDTH_7BIT;
 
     // The peripheral is brought up by the setup of the board, so a disabled
     // bus has to be released rather than just left alone

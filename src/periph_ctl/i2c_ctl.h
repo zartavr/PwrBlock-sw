@@ -31,7 +31,8 @@ scpi_result_t SCPI_I2cReset(scpi_t* context);
 
 /**
  * BUS:I2C:STATe {OFF | ON | 0 | 1}
- * @brief Enable and disable the I2C bus. Default is OFF.
+ * @brief Enable and disable the I2C bus. Default is OFF. The clock is fixed at
+ * 100 kHz.
  *
  * @param context
  * @return scpi_result_t
@@ -49,7 +50,8 @@ scpi_result_t SCPI_I2cStateQ(scpi_t* context);
 
 /**
  * BUS:I2C:ADDRess:WIDTh {7 | 10}
- * @brief Set up width of the slave address in bits. Default is 7.
+ * @brief Set up width of the slave address in bits. Default is 7. It sets the
+ * range of the Address argument of WRITe and READ?.
  *
  * @param context
  * @return scpi_result_t
@@ -67,7 +69,9 @@ scpi_result_t SCPI_I2cAddressWidthQ(scpi_t* context);
 
 /**
  * BUS:I2C:WRITe {<Address>},{<Data>}
- * @brief Write data to the slave: START, address + W, data, STOP.
+ * @brief Write data to the slave: START, address + W, data, STOP. Address is
+ * the unshifted address of the slave, Data is up to 32 bytes in any form
+ * accepted by bus_data_param().
  *
  * @param context
  * @return scpi_result_t
@@ -77,6 +81,7 @@ scpi_result_t SCPI_I2cWrite(scpi_t* context);
 /**
  * BUS:I2C:READ? {<Address>},{<Count>}
  * @brief Read Count bytes from the slave: START, address + R, data, STOP.
+ * Count is 1 to 32, the reply follows FORMat[:DATA].
  *
  * @param context
  * @return scpi_result_t

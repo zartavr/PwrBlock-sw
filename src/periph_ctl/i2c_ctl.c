@@ -18,10 +18,7 @@
 
 #include "bus_format.h"
 #include "i2c_bus.h"
-
-/// Widths of the slave address accepted by BUS:I2C:ADDRess:WIDTh
-#define I2C_CTL_WIDTH_7BIT  7
-#define I2C_CTL_WIDTH_10BIT 10
+#include "i2c_bus_def.h"
 
 // Buffers of the transfers. The commands are served from the USB device task,
 // whose stack is too small to carry them, and only that task touches them
@@ -152,12 +149,14 @@ scpi_result_t SCPI_I2cAddressWidth(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    if (value != I2C_CTL_WIDTH_7BIT && value != I2C_CTL_WIDTH_10BIT) {
+    // The value of the enum is the width in bits, so it is the only place that
+    // decides which widths are accepted
+    if (value != I2C_BUS_WIDTH_7BIT && value != I2C_BUS_WIDTH_10BIT) {
         SCPI_ErrorPush(context, SCPI_ERROR_ILLEGAL_PARAMETER_VALUE);
         return SCPI_RES_ERR;
     }
 
-    const I2cBusAddrWidth width = (value == I2C_CTL_WIDTH_10BIT) ?
+    const I2cBusAddrWidth width = (value == I2C_BUS_WIDTH_10BIT) ?
                                       I2C_BUS_WIDTH_10BIT :
                                       I2C_BUS_WIDTH_7BIT;
 
@@ -167,8 +166,8 @@ scpi_result_t SCPI_I2cAddressWidth(scpi_t* context)
 scpi_result_t SCPI_I2cAddressWidthQ(scpi_t* context)
 {
     const uint32_t width = (i2c_bus_addr_width_get() == I2C_BUS_WIDTH_10BIT) ?
-                               I2C_CTL_WIDTH_10BIT :
-                               I2C_CTL_WIDTH_7BIT;
+                               I2C_BUS_WIDTH_10BIT :
+                               I2C_BUS_WIDTH_7BIT;
 
     SCPI_ResultUInt32(context, width);
     return SCPI_RES_OK;
