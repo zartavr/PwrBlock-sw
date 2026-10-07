@@ -23,10 +23,6 @@
  * public interface of the backend is i2c_bus.h.
  */
 
-/// Supported range of the transaction timeout in milliseconds
-#define I2C_BUS_TIMEOUT_MIN 1
-#define I2C_BUS_TIMEOUT_MAX 10000
-
 /// Max unshifted address of a slave, per width of the address
 #define I2C_BUS_ADDR_MAX_7BIT  0x7F
 #define I2C_BUS_ADDR_MAX_10BIT 0x3FF
