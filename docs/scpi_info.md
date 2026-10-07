@@ -55,3 +55,22 @@ List of supported SCPI commands:
   - `[SOURce]:DIGital:PIN<n>:PULL?` - internal pull resistor query.
   - `[SOURce]:DIGital:PIN<n>[:LEVel] {OFF | ON | 0 | 1}` - sets the output level of the pin. For an input pin, the value is stored and applied when the pin is switched to output.
   - `[SOURce]:DIGital:PIN<n>[:LEVel]?` - query for the actual level on the pin (for both input and output pins), example output "1".
+- Bus data format:
+  - `<Data>` - data parameter of bus write commands, up to 32 bytes. Accepted in any of these forms, regardless of `FORMat[:DATA]`:
+    - comma-separated list of bytes, e.g. `#H50,#H01,255`;
+    - definite-length arbitrary block, e.g. `#13ABC` (the first digit is the number of length digits, then the length, then the bytes).
+  - `FORMat[:DATA] {ASCii | HEXadecimal | INTeger}` - sets the response format of bus read queries: ASCii - comma-separated decimal bytes, example output "80,1,255"; HEXadecimal - comma-separated hexadecimal bytes, example output "#H50,#H01,#HFF"; INTeger - definite-length arbitrary block of raw bytes, example output "#13ABC". Default is HEXadecimal.
+  - `FORMat[:DATA]?` - response format query.
+- Bus I2C control (master mode):
+  - The bus uses dedicated pins of the external connector, SCL and SDA, not shared with IO1 - IO7. The SCL clock is fixed at 100 kHz and the transaction timeout at 100 ms. There are no internal pull-up resistors, SDA and SCL need external ones.
+  - `BUS:I2C:STATe {OFF | ON | 0 | 1}` - enables and disables the I2C bus. Default is OFF.
+  - `BUS:I2C:STATe?` - I2C bus state query.
+  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7. It defines the range of the `Address` argument of `WRITe` and `READ?`: #H00 to #H7F for 7 bits, #H000 to #H3FF for 10 bits. It can be set while the bus is disabled and applies at the next `STATe ON`. Any other width returns error -224.
+  - `BUS:I2C:ADDRess:WIDTh?` - slave address width query, example output "7".
+  - `BUS:I2C:WRITe {<Address>},{<Data>}` - writes data to the slave: START, address + W, data, STOP. `Address` is the unshifted slave address, e.g. `#H50`, `Data` is 1 to 32 bytes, example: `BUS:I2C:WRIT #H50,#H10,#H01`.
+  - `BUS:I2C:READ? {<Address>},{<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. `Count` is 1 to 32. Response format is set by `FORMat[:DATA]`, example: `BUS:I2C:READ? #H50,2` returns "#H12,#H34" in the default HEXadecimal format, or "18,52" in ASCii.
+  - `WRITe` and `READ?` on a disabled bus return error -221. An address out of range for the current width, a data byte above 255, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
+- Bus and GPIO state after `*RST` and power-on:
+  - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
+  - I2C: the bus is disabled and the address width is 7 bits.
+  - `*SAV` and `*RCL` do not affect bus and GPIO state.
