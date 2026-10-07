@@ -182,28 +182,6 @@ scpi_result_t SCPI_I2cStateQ(scpi_t* context)
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_I2cFrequency(scpi_t* context)
-{
-    uint32_t value = 0;
-
-    // Read first parameter if present
-    if (!SCPI_ParamUInt32(context, &value, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    return i2c_status_result(context, i2c_bus_freq_set(value));
-}
-
-scpi_result_t SCPI_I2cFrequencyQ(scpi_t* context)
-{
-    return i2c_limit_result(
-        context,
-        i2c_bus_freq_get(),
-        I2C_BUS_FREQ_MIN,
-        I2C_BUS_FREQ_MAX
-    );
-}
-
 scpi_result_t SCPI_I2cAddress(scpi_t* context)
 {
     uint32_t value = 0;

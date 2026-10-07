@@ -297,14 +297,6 @@ const scpi_command_t scpi_commands[] = {
      .callback = SCPI_I2cStateQ,
      },
     {
-     .pattern  = "BUS:I2C:FREQuency",
-     .callback = SCPI_I2cFrequency,
-     },
-    {
-     .pattern  = "BUS:I2C:FREQuency?",
-     .callback = SCPI_I2cFrequencyQ,
-     },
-    {
      .pattern  = "BUS:I2C:ADDRess",
      .callback = SCPI_I2cAddress,
      },

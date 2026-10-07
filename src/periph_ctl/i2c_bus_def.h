@@ -23,11 +23,6 @@
  * public interface of the backend is i2c_bus.h.
  */
 
-/// Supported range of the clock frequency in hertz. The ends are the first and
-/// the last entry of the table of the supported frequencies of i2c_bus.c.
-#define I2C_BUS_FREQ_MIN 10000
-#define I2C_BUS_FREQ_MAX 400000
-
 /// Supported range of the transaction timeout in milliseconds
 #define I2C_BUS_TIMEOUT_MIN 1
 #define I2C_BUS_TIMEOUT_MAX 10000

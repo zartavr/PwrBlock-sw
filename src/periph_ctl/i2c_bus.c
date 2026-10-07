@@ -20,9 +20,20 @@
 
 #include <stm32g0xx_hal.h>
 
-/// Defaults applied on power-on and by *RST
-#define I2C_BUS_FREQ_DEFAULT    100000
+/// Default applied on power-on and by *RST
 #define I2C_BUS_TIMEOUT_DEFAULT 100
+
+/**
+ * TIMINGR value of the peripheral, the clock of the bus is fixed at 100 kHz.
+ * I2C2 is clocked from PCLK1 at 64 MHz, so a prescaled tick is
+ * t_PRESC = (PRESC + 1) / 64 MHz and the period of the clock is
+ * (SCLL + 1 + SCLH + 1) * t_PRESC plus the rise and fall times.
+ *
+ * The value is the one CubeMX generated for MX_I2C2_Init(): PRESC = 1,
+ * SCLDEL = 0xB, SDADEL = 1, SCLH = 125, SCLL = 181, that is 126 * 31.25 ns high
+ * and 182 * 31.25 ns low.
+ */
+#define I2C_BUS_TIMING_100_KHZ 0x10B17DB5
 
 /**
  * Pins of the bus on the external connector, they are dedicated to it and are
@@ -34,66 +45,19 @@
 #define I2C2_SDA_GPIO_Port GPIOB
 #define I2C2_SDA_Pin       GPIO_PIN_4
 
-/// Clock setup of the peripheral for a supported frequency
-typedef struct
-{
-    uint32_t hz;
-    uint32_t timing;
-} I2cBusSpeed;
-
 /// Current configuration of the bus
 typedef struct
 {
     bool            enabled;
-    uint32_t        freq_hz;
     uint32_t        addr;
     I2cBusAddrWidth width;
     bool            pullup;
     uint32_t        timeout_ms;
 } I2cBusCfg;
 
-/**
- * Supported clock frequencies, in ascending order, with the TIMINGR value of
- * the peripheral for each one. I2C2 is clocked from PCLK1 at 64 MHz, so a
- * prescaled tick is t_PRESC = (PRESC + 1) / 64 MHz and the period of the
- * clock is (SCLL + 1 + SCLH + 1) * t_PRESC plus the rise and fall times.
- *
- * The 100 kHz entry is the value CubeMX generated for MX_I2C2_Init(), it is
- * the reference of the table: PRESC = 1, SCLDEL = 0xB, SDADEL = 1, SCLH = 125,
- * SCLL = 181, that is 126 * 31.25 ns high and 182 * 31.25 ns low.
- *
- * The other two are derived with the same formula for a rise time of 100 ns
- * and a fall time of 10 ns, keeping the data setup time above the 250 ns of
- * standard mode and the 100 ns of fast mode. They have not been measured on
- * hardware yet - check them on a scope before trusting the edges.
- */
-static const I2cBusSpeed SPEEDS[] = {
-    {I2C_BUS_FREQ_MIN,  0xC042F5F5}, // PRESC=0xC SCLDEL=4 SDADEL=2 SCLH=0xF5 SCLL=0xF5
-    {100000, 0x10B17DB5}, // PRESC=1   SCLDEL=B SDADEL=1 SCLH=0x7D SCLL=0xB5
-    {I2C_BUS_FREQ_MAX, 0x00924453}, // PRESC=0   SCLDEL=9 SDADEL=2 SCLH=0x44 SCLL=0x53
-};
-
-#define I2C_BUS_SPEED_COUNT (sizeof(SPEEDS) / sizeof(SPEEDS[0]))
-
 extern I2C_HandleTypeDef hi2c2;
 
 static I2cBusCfg cfg;
-
-/**
- * @brief Get the TIMINGR value of the current frequency.
- *
- * @return uint32_t Value of the register.
- */
-static uint32_t i2c_bus_timing(void)
-{
-    for (uint32_t index = 0; index < I2C_BUS_SPEED_COUNT; index++) {
-        if (SPEEDS[index].hz == cfg.freq_hz) {
-            return SPEEDS[index].timing;
-        }
-    }
-
-    return SPEEDS[0].timing;
-}
 
 /**
  * @brief Get the address of the slave in the form expected by the HAL.
@@ -169,7 +133,7 @@ static I2cBusStatus i2c_bus_apply(void)
     HAL_I2C_DeInit(&hi2c2);
 
     hi2c2.Instance              = I2C2;
-    hi2c2.Init.Timing           = i2c_bus_timing();
+    hi2c2.Init.Timing           = I2C_BUS_TIMING_100_KHZ;
     hi2c2.Init.OwnAddress1      = 0;
     hi2c2.Init.AddressingMode   = (cfg.width == I2C_BUS_WIDTH_10BIT) ?
                                       I2C_ADDRESSINGMODE_10BIT :
@@ -222,7 +186,6 @@ void i2c_bus_init(void)
 void i2c_bus_reset(void)
 {
     cfg.enabled    = false;
-    cfg.freq_hz    = I2C_BUS_FREQ_DEFAULT;
     cfg.addr       = 0;
     cfg.width      = I2C_BUS_WIDTH_7BIT;
     cfg.pullup     = false;
@@ -258,25 +221,6 @@ I2cBusStatus i2c_bus_state_set(bool enabled)
 bool i2c_bus_state_get(void)
 {
     return cfg.enabled;
-}
-
-I2cBusStatus i2c_bus_freq_set(uint32_t hz)
-{
-    for (uint32_t index = 0; index < I2C_BUS_SPEED_COUNT; index++) {
-        if (SPEEDS[index].hz != hz) {
-            continue;
-        }
-
-        cfg.freq_hz = hz;
-        return i2c_bus_refresh();
-    }
-
-    return I2C_BUS_ERR_PARAM;
-}
-
-uint32_t i2c_bus_freq_get(void)
-{
-    return cfg.freq_hz;
 }
 
 /**
@@ -356,7 +300,6 @@ uint32_t i2c_bus_timeout_get(void)
 {
     return cfg.timeout_ms;
 }
-
 
 I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len)
 {

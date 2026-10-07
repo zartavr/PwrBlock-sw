@@ -62,8 +62,8 @@ void i2c_bus_init(void);
 /**
  * @brief Restore the power-on defaults of the bus, used by *RST.
  *
- * The bus becomes disabled with a clock of 100 kHz, a slave address of 0 of
- * 7 bits, without internal pull-up resistors.
+ * The bus becomes disabled with a slave address of 0 of 7 bits, without
+ * internal pull-up resistors. The clock of the bus is fixed at 100 kHz.
  */
 void i2c_bus_reset(void);
 
@@ -82,24 +82,6 @@ I2cBusStatus i2c_bus_state_set(bool enabled);
  * @return false The bus is disabled.
  */
 bool i2c_bus_state_get(void);
-
-/**
- * @brief Set frequency of the clock.
- *
- * Only the discrete values of the internal table are supported, they are the
- * ones with a known good timing setup of the peripheral.
- *
- * @param hz Value in hertz.
- * @return I2cBusStatus I2C_BUS_ERR_PARAM if the value is not supported.
- */
-I2cBusStatus i2c_bus_freq_set(uint32_t hz);
-
-/**
- * @brief Get frequency of the clock.
- *
- * @return uint32_t Value in hertz.
- */
-uint32_t i2c_bus_freq_get(void);
 
 /**
  * @brief Set address of the slave, used by the transfers.
