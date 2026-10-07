@@ -40,55 +40,36 @@ typedef enum
 /**
  * @brief Init the I2C bus of the external connector.
  *
- * The bus is I2C2 on dedicated pins, SCL on PA7 and SDA on PB4, not shared
- * with the GPIO subsystem. It runs as a master at a fixed 100 kHz clock, with
- * no internal pull-up resistors, so the bus needs external ones.
- *
- * Applies the power-on defaults, which leave the bus disabled. Must be called
- * before the SCPI parser starts to serve BUS:I2C commands.
- *
- * The transfers of this module are interrupt driven: the calling thread sleeps
- * on a semaphore until the interrupt of I2C2 reports the end of the transfer
- * or the fixed transaction timeout of I2C_BUS_TIMEOUT_MS expires, so other
- * threads keep running meanwhile. The configuration calls re-initialize the
- * peripheral, so all calls are expected to be made from a single thread, the
- * one running the SCPI parser.
+ * Master at a fixed 100 kHz, external pull-ups required. The bus starts
+ * disabled.
  */
 void i2c_bus_init(void);
 
 /**
- * @brief Restore the power-on defaults of the bus, used by *RST.
- *
- * The bus becomes disabled with an address width of 7 bits. The clock of the
- * bus is fixed at 100 kHz.
+ * @brief Restore defaults: bus disabled, 7 bit address width.
  */
 void i2c_bus_reset(void);
 
 /**
- * @brief Set state of the bus.
+ * @brief Enable or disable the bus.
  *
- * @param enabled True - the bus is enabled, false - the bus is disabled.
- * @return I2cBusStatus I2C_BUS_ERR_BUS if the hardware rejected the setup.
+ * @param enabled True - enable, false - disable.
+ * @return I2cBusStatus I2C_BUS_ERR_BUS if the peripheral setup failed.
  */
 I2cBusStatus i2c_bus_state_set(bool enabled);
 
 /**
  * @brief Get state of the bus.
  *
- * @return true The bus is enabled.
- * @return false The bus is disabled.
+ * @return bool True if the bus is enabled.
  */
 bool i2c_bus_state_get(void);
 
 /**
- * @brief Set width of the slave address.
- *
- * May be set while the bus is disabled, the width then applies at the next
- * enable. On an enabled bus the peripheral is re-initialized with the new
- * addressing mode at once.
+ * @brief Set width of the slave address, applied at once on an enabled bus.
  *
  * @param width Width to apply.
- * @return I2cBusStatus I2C_BUS_ERR_BUS if the hardware rejected the setup.
+ * @return I2cBusStatus I2C_BUS_ERR_BUS if the peripheral setup failed.
  */
 I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width);
 
@@ -102,23 +83,19 @@ I2cBusAddrWidth i2c_bus_addr_width_get(void);
 /**
  * @brief Write data to a slave: START, address + W, data, STOP.
  *
- * @param addr Unshifted address of the slave, within the current width.
- * @param data Bytes to be written.
- * @param len Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN (i2c_bus_def.h).
- * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_DISABLED if the
- * bus is disabled, I2C_BUS_ERR_PARAM if the address or the length is out of
- * range.
+ * @param addr Unshifted address of the slave.
+ * @param data Bytes to write.
+ * @param len Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
+ * @return I2cBusStatus Result of the transfer.
  */
 I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len);
 
 /**
  * @brief Read data from a slave: START, address + R, data, STOP.
  *
- * @param addr Unshifted address of the slave, within the current width.
+ * @param addr Unshifted address of the slave.
  * @param dst Destination of the read bytes.
- * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN (i2c_bus_def.h).
- * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_DISABLED if the
- * bus is disabled, I2C_BUS_ERR_PARAM if the address or the count is out of
- * range.
+ * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
+ * @return I2cBusStatus Result of the transfer.
  */
 I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count);

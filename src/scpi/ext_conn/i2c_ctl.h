@@ -19,71 +19,42 @@
 #include <scpi/scpi.h>
 
 /**
- * @brief Restore the power-on defaults of the I2C bus.
- *
- * Wraps i2c_bus_reset() so that callers outside the bsp/drivers/ext_conn
- * backend, e.g. *RST, do not depend on it directly.
- *
- * @param context
- * @return scpi_result_t
+ * @brief Restore the I2C bus defaults, used by *RST.
  */
 scpi_result_t SCPI_I2cReset(scpi_t* context);
 
 /**
  * BUS:I2C:STATe {OFF | ON | 0 | 1}
- * @brief Enable and disable the I2C bus. Default is OFF. The clock is fixed at
- * 100 kHz.
- *
- * @param context
- * @return scpi_result_t
+ * @brief Enable or disable the bus. Default is OFF.
  */
 scpi_result_t SCPI_I2cState(scpi_t* context);
 
 /**
  * BUS:I2C:STATe?
- * @brief This query returns state of the I2C bus.
- *
- * @param context
- * @return scpi_result_t
+ * @brief Query state of the bus.
  */
 scpi_result_t SCPI_I2cStateQ(scpi_t* context);
 
 /**
  * BUS:I2C:ADDRess:WIDTh {7 | 10}
- * @brief Set up width of the slave address in bits. Default is 7. It sets the
- * range of the Address argument of WRITe and READ?.
- *
- * @param context
- * @return scpi_result_t
+ * @brief Set width of the slave address in bits. Default is 7.
  */
 scpi_result_t SCPI_I2cAddressWidth(scpi_t* context);
 
 /**
  * BUS:I2C:ADDRess:WIDTh?
- * @brief This query returns width of the slave address in bits.
- *
- * @param context
- * @return scpi_result_t
+ * @brief Query width of the slave address in bits.
  */
 scpi_result_t SCPI_I2cAddressWidthQ(scpi_t* context);
 
 /**
  * BUS:I2C:WRITe {<Address>},{<Data>}
- * @brief Write data to the slave: START, address + W, data, STOP. Address is
- * the unshifted address of the slave, Data is up to 32 bytes in any form
- * accepted by bus_data_param().
- *
- * @param context
- * @return scpi_result_t
+ * @brief Write up to 32 bytes to the slave.
  */
 scpi_result_t SCPI_I2cWrite(scpi_t* context);
 
 /**
  * BUS:I2C:READ? {<Address>},{<Count>}
- * @brief Read Count bytes from the slave: START, address + R, data, STOP.
- * Count is 1 to 32, the reply follows FORMat[:DATA].
- *
- * @param context
- * @return scpi_result_t
+ * @brief Read 1 to 32 bytes from the slave, reply follows FORMat[:DATA].
  */
 scpi_result_t SCPI_I2cReadQ(scpi_t* context);

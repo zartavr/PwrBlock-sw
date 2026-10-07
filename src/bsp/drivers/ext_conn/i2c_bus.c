@@ -175,9 +175,7 @@ void i2c_bus_irq_handler(void)
 }
 
 /**
- * @brief Get max address of the slave allowed by the current width.
- *
- * @return uint32_t Unshifted address of the slave.
+ * @brief Get max unshifted slave address for the current width.
  */
 static uint32_t i2c_bus_addr_max(void)
 {
@@ -189,13 +187,7 @@ static uint32_t i2c_bus_addr_max(void)
 }
 
 /**
- * @brief Get the address of a slave in the form expected by the HAL.
- *
- * A 7 bit address sits in SADD[7:1] of the peripheral, so it is shifted, a
- * 10 bit one fills SADD[9:0] and is passed as it is.
- *
- * @param addr Unshifted address of the slave.
- * @return uint16_t Address of the slave.
+ * @brief Convert an unshifted address to the HAL form, 7 bit ones shifted left.
  */
 static uint16_t i2c_bus_dev_addr(uint32_t addr)
 {
@@ -207,10 +199,7 @@ static uint16_t i2c_bus_dev_addr(uint32_t addr)
 }
 
 /**
- * @brief Convert an error code of the HAL into a status of the bus.
- *
- * @param errors Error code of the handle, HAL_I2C_ERROR_*.
- * @return I2cBusStatus Status of the bus.
+ * @brief Convert a HAL_I2C_ERROR_* code into a status of the bus.
  */
 static I2cBusStatus i2c_bus_status(uint32_t errors)
 {
@@ -226,9 +215,7 @@ static I2cBusStatus i2c_bus_status(uint32_t errors)
 }
 
 /**
- * @brief Apply the stored configuration to the peripheral.
- *
- * @return I2cBusStatus I2C_BUS_ERR_BUS if the hardware rejected the setup.
+ * @brief Re-initialize the peripheral with the stored configuration.
  */
 static I2cBusStatus i2c_bus_apply(void)
 {
@@ -263,9 +250,7 @@ static I2cBusStatus i2c_bus_apply(void)
 }
 
 /**
- * @brief Re-apply the stored configuration if the bus is enabled.
- *
- * @return I2cBusStatus Result of the setup.
+ * @brief Re-apply the configuration if the bus is enabled.
  */
 static I2cBusStatus i2c_bus_refresh(void)
 {
@@ -277,9 +262,7 @@ static I2cBusStatus i2c_bus_refresh(void)
 }
 
 /**
- * @brief Prepare the bus for a transfer started in the interrupt mode.
- *
- * Must be called right before the HAL call that starts the transfer.
+ * @brief Arm the completion semaphore, call right before starting a transfer.
  */
 static void i2c_bus_xfer_prepare(void)
 {
@@ -291,15 +274,9 @@ static void i2c_bus_xfer_prepare(void)
 }
 
 /**
- * @brief Wait for the end of a transfer started in the interrupt mode.
- *
- * The calling thread sleeps until the interrupt handler reports the end of the
- * transfer or the transaction timeout expires. On a timeout the peripheral is
- * re-initialized, which aborts the transfer and releases a clock stretched by
- * the slave.
+ * @brief Wait for the end of a transfer, re-init the peripheral on timeout.
  *
  * @param started Result of the HAL call that started the transfer.
- * @return I2cBusStatus Status of the transfer.
  */
 static I2cBusStatus i2c_bus_wait(HAL_StatusTypeDef started)
 {

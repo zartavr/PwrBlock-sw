@@ -65,11 +65,11 @@ List of supported SCPI commands:
   - The bus uses dedicated pins of the external connector, SCL and SDA, not shared with IO1 - IO7. The SCL clock is fixed at 100 kHz and the transaction timeout at 100 ms. There are no internal pull-up resistors, SDA and SCL need external ones.
   - `BUS:I2C:STATe {OFF | ON | 0 | 1}` - enables and disables the I2C bus. Default is OFF.
   - `BUS:I2C:STATe?` - I2C bus state query.
-  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7. It defines the range of the `Address` argument of `WRITe` and `READ?`: #H00 to #H7F for 7 bits, #H000 to #H3FF for 10 bits. It can be set while the bus is disabled and applies at the next `STATe ON`. Any other width returns error -224.
+  - `BUS:I2C:ADDRess:WIDTh {7 | 10}` - sets the slave address width in bits. Default is 7. It defines the range of the `Address` argument of `WRITe` and `READ?`: #H00 to #H7F for 7 bits, #H000 to #H3FF for 10 bits. It can be changed while the bus is enabled, the new width applies at once. Any other width returns error -224.
   - `BUS:I2C:ADDRess:WIDTh?` - slave address width query, example output "7".
   - `BUS:I2C:WRITe {<Address>},{<Data>}` - writes data to the slave: START, address + W, data, STOP. `Address` is the unshifted slave address, e.g. `#H50`, `Data` is 1 to 32 bytes, example: `BUS:I2C:WRIT #H50,#H10,#H01`.
   - `BUS:I2C:READ? {<Address>},{<Count>}` - reads `Count` bytes from the slave: START, address + R, data, STOP. `Count` is 1 to 32. Response format is set by `FORMat[:DATA]`, example: `BUS:I2C:READ? #H50,2` returns "#H12,#H34" in the default HEXadecimal format, or "18,52" in ASCii.
-  - `WRITe` and `READ?` on a disabled bus return error -221. An address out of range for the current width, a data byte above 255, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
+  - `WRITe` and `READ?` on a disabled bus return error -221. An address out of range for the current width, a data byte above 255, an empty `Data` block, or a `Count` of 0, returns error -222. More than 32 bytes of `Data`, or a `Count` above 32, returns error -223.
 - Bus and GPIO state after `*RST` and power-on:
   - all buses are disabled with default settings, all GPIO pins are inputs with default settings, `FORMat[:DATA]` is HEXadecimal.
   - I2C: the bus is disabled and the address width is 7 bits.
