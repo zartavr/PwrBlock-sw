@@ -182,34 +182,6 @@ scpi_result_t SCPI_I2cStateQ(scpi_t* context)
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_I2cAddress(scpi_t* context)
-{
-    uint32_t value = 0;
-
-    // Read first parameter if present
-    if (!SCPI_ParamUInt32(context, &value, TRUE)) {
-        return SCPI_RES_ERR;
-    }
-
-    const uint32_t max = (i2c_bus_addr_width_get() == I2C_BUS_WIDTH_10BIT) ?
-                             I2C_BUS_ADDR_MAX_10BIT :
-                             I2C_BUS_ADDR_MAX_7BIT;
-
-    if (value > max) {
-        SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
-        return SCPI_RES_ERR;
-    }
-
-    i2c_bus_addr_set(value);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_I2cAddressQ(scpi_t* context)
-{
-    SCPI_ResultUInt32(context, i2c_bus_addr_get());
-    return SCPI_RES_OK;
-}
-
 scpi_result_t SCPI_I2cAddressWidth(scpi_t* context)
 {
     uint32_t value = 0;
@@ -294,12 +266,18 @@ scpi_result_t SCPI_I2cWrite(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
+    // Read first parameter if present
+    uint32_t addr = 0;
+    if (!SCPI_ParamUInt32(context, &addr, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+
     uint32_t len = 0;
     if (!bus_data_param(context, tx_buffer, I2C_BUS_XFER_MAX_LEN, &len)) {
         return SCPI_RES_ERR;
     }
 
-    return i2c_status_result(context, i2c_bus_write(tx_buffer, len));
+    return i2c_status_result(context, i2c_bus_write(addr, tx_buffer, len));
 }
 
 scpi_result_t SCPI_I2cReadQ(scpi_t* context)
@@ -308,23 +286,9 @@ scpi_result_t SCPI_I2cReadQ(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    uint32_t count = 0;
-    if (!i2c_count_param(context, &count)) {
-        return SCPI_RES_ERR;
-    }
-
-    const I2cBusStatus status = i2c_bus_read(rx_buffer, count);
-    if (status != I2C_BUS_OK) {
-        return i2c_status_result(context, status);
-    }
-
-    bus_data_result(context, rx_buffer, count);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_I2cTransferQ(scpi_t* context)
-{
-    if (!i2c_enabled_check(context)) {
+    // Read first parameter if present
+    uint32_t addr = 0;
+    if (!SCPI_ParamUInt32(context, &addr, TRUE)) {
         return SCPI_RES_ERR;
     }
 
@@ -333,24 +297,7 @@ scpi_result_t SCPI_I2cTransferQ(scpi_t* context)
         return SCPI_RES_ERR;
     }
 
-    uint32_t prefix_len = 0;
-    if (!bus_data_param(
-            context, tx_buffer, I2C_BUS_XFER_MAX_LEN, &prefix_len
-        )) {
-        return SCPI_RES_ERR;
-    }
-
-    // The write phase is carried by the memory address of a read of the HAL,
-    // so it is shorter than a full transfer. A prefix that does not fit is
-    // a value the command cannot accept, not an overflow of the data buffer
-    if (prefix_len > I2C_BUS_PREFIX_MAX_LEN) {
-        SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
-        return SCPI_RES_ERR;
-    }
-
-    const I2cBusStatus status =
-        i2c_bus_transfer(tx_buffer, prefix_len, rx_buffer, count);
-
+    const I2cBusStatus status = i2c_bus_read(addr, rx_buffer, count);
     if (status != I2C_BUS_OK) {
         return i2c_status_result(context, status);
     }

@@ -24,10 +24,6 @@
 /// characters of it in the hexadecimal response format.
 #define I2C_BUS_XFER_MAX_LEN 32
 
-/// Maximum length of the write phase of a combined transfer. The blocking HAL
-/// carries the phase in the memory address of a read, which is 8 or 16 bits.
-#define I2C_BUS_PREFIX_MAX_LEN 2
-
 /// Result of an operation of the bus
 typedef enum
 {
@@ -62,8 +58,8 @@ void i2c_bus_init(void);
 /**
  * @brief Restore the power-on defaults of the bus, used by *RST.
  *
- * The bus becomes disabled with a slave address of 0 of 7 bits, without
- * internal pull-up resistors. The clock of the bus is fixed at 100 kHz.
+ * The bus becomes disabled with an address width of 7 bits, without internal
+ * pull-up resistors. The clock of the bus is fixed at 100 kHz.
  */
 void i2c_bus_reset(void);
 
@@ -82,20 +78,6 @@ I2cBusStatus i2c_bus_state_set(bool enabled);
  * @return false The bus is disabled.
  */
 bool i2c_bus_state_get(void);
-
-/**
- * @brief Set address of the slave, used by the transfers.
- *
- * @param addr Unshifted address of the slave.
- */
-void i2c_bus_addr_set(uint32_t addr);
-
-/**
- * @brief Get address of the slave.
- *
- * @return uint32_t Unshifted address of the slave.
- */
-uint32_t i2c_bus_addr_get(void);
 
 /**
  * @brief Set width of the slave address.
@@ -143,34 +125,23 @@ void i2c_bus_timeout_set(uint32_t ms);
 uint32_t i2c_bus_timeout_get(void);
 
 /**
- * @brief Write data to the slave: START, address + W, data, STOP.
+ * @brief Write data to a slave: START, address + W, data, STOP.
  *
+ * @param addr Unshifted address of the slave, within the current width.
  * @param data Bytes to be written.
  * @param len Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
- * @return I2cBusStatus Result of the transaction.
+ * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_PARAM if the
+ * address or the length is out of range.
  */
-I2cBusStatus i2c_bus_write(const uint8_t* data, uint32_t len);
+I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len);
 
 /**
- * @brief Read data from the slave: START, address + R, data, STOP.
+ * @brief Read data from a slave: START, address + R, data, STOP.
  *
+ * @param addr Unshifted address of the slave, within the current width.
  * @param dst Destination of the read bytes.
  * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
- * @return I2cBusStatus Result of the transaction.
+ * @return I2cBusStatus Result of the transaction, I2C_BUS_ERR_PARAM if the
+ * address or the count is out of range.
  */
-I2cBusStatus i2c_bus_read(uint8_t* dst, uint32_t count);
-
-/**
- * @brief Write data to the slave, then read in the same transaction using a
- * repeated START.
- *
- * @param prefix Bytes to be written before the repeated START, the first one
- * is sent first.
- * @param prefix_len Number of bytes, 1 to I2C_BUS_PREFIX_MAX_LEN.
- * @param dst Destination of the read bytes.
- * @param count Number of bytes, 1 to I2C_BUS_XFER_MAX_LEN.
- * @return I2cBusStatus Result of the transaction.
- */
-I2cBusStatus i2c_bus_transfer(
-    const uint8_t* prefix, uint32_t prefix_len, uint8_t* dst, uint32_t count
-);
+I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count);
