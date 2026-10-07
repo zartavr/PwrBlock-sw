@@ -25,6 +25,8 @@
 #include <device/usbd.h>
 #include <usbpd_hw_if.h>
 
+#include "bsp/drivers/ext_conn/i2c_bus.h"
+
 // UCPD Trace module
 #ifdef _TRACE
 #include <tracer_emb.h>
@@ -64,6 +66,7 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef  hadc1;
 extern I2C_HandleTypeDef  hi2c1;
+extern I2C_HandleTypeDef  hi2c2;
 extern SPI_HandleTypeDef  hspi1;
 extern DMA_HandleTypeDef  hdma_tim4_ch2;
 extern UART_HandleTypeDef huart3;
@@ -248,6 +251,26 @@ void I2C1_IRQHandler(void)
     /* USER CODE BEGIN I2C1_IRQn 1 */
 
     /* USER CODE END I2C1_IRQn 1 */
+}
+
+/**
+ * @brief This function handles I2C2, I2C3 Interrupt (combined with EXTI 24 and
+ * EXTI 22).
+ */
+void I2C2_3_IRQHandler(void)
+{
+    /* USER CODE BEGIN I2C2_3_IRQn 0 */
+    i2c_bus_irq_handler();
+    /* USER CODE END I2C2_3_IRQn 0 */
+    if (hi2c2.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) {
+        HAL_I2C_ER_IRQHandler(&hi2c2);
+    }
+    else {
+        HAL_I2C_EV_IRQHandler(&hi2c2);
+    }
+    /* USER CODE BEGIN I2C2_3_IRQn 1 */
+
+    /* USER CODE END I2C2_3_IRQn 1 */
 }
 
 /**
