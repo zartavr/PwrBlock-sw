@@ -156,14 +156,6 @@ I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count)
 void i2c_bus_irq_handler(void)
 {
     I2C_HandleTypeDef* const hi2c = &bus.handler;
-    uint32_t                 isr  = hi2c->Instance->ISR;
-
-    if ((isr & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) != 0) {
-        HAL_I2C_ER_IRQHandler(hi2c);
-    }
-    else {
-        HAL_I2C_EV_IRQHandler(hi2c);
-    }
 
     // The HAL returns the handle to ready at the end of a transfer, either
     // completed or aborted by an error, a NACK included
