@@ -15,13 +15,12 @@
  */
 
 #include "i2c_bus.h"
-
 #include "i2c_bus_def.h"
+#include "i2c_bus_it.h"
 
 #include <cmsis_os2.h>
 #include <stm32g0xx_hal.h>
 
-/// Current configuration of the bus
 typedef struct
 {
     I2C_HandleTypeDef handler;
@@ -30,16 +29,150 @@ typedef struct
 
     I2cBusAddrWidth   width;
     bool              enabled;
-    volatile bool     pending;  // A transfer is waited for by the thread
-    volatile uint32_t errors;   // HAL_I2C_ERROR_* code of the last transfer
+    volatile bool     pending;
+    volatile uint32_t errors;
 } I2CBus;
 
-// Handle of the board setup, released at init in favor of the one of the bus
+static I2CBus bus;
+
 extern I2C_HandleTypeDef hi2c2;
 
-// The interrupt handler releases ready_sem when a transfer ends, the error
-// code of the transfer is left in errors before that
-static I2CBus bus;
+// Private function prototypes
+static I2cBusStatus i2c_bus_status(uint32_t errors);
+
+static I2cBusStatus i2c_bus_refresh(void);
+static I2cBusStatus i2c_bus_apply(void);
+static void         i2c_bus_xfer_prepare(void);
+static I2cBusStatus i2c_bus_wait(HAL_StatusTypeDef started);
+
+static uint16_t i2c_bus_dev_addr(uint32_t addr);
+static uint32_t i2c_bus_addr_max(void);
+
+void i2c_bus_init(void)
+{
+    bus.ready_sem = osSemaphoreNew(1, 0, NULL);
+    bus.mutex     = osMutexNew(NULL);
+
+    // The de-init of a handle touches its peripheral, so the handle of the bus
+    // needs it before the first one
+    bus.handler = hi2c2;
+
+    // The peripheral is brought up by the setup of the board on its own handle,
+    // the bus takes it over with the one above
+    HAL_I2C_DeInit(&hi2c2);
+
+    i2c_bus_reset();
+}
+
+void i2c_bus_reset(void)
+{
+    bus.enabled = false;
+    bus.width   = I2C_BUS_WIDTH_7BIT;
+
+    HAL_I2C_DeInit(&bus.handler);
+}
+
+bool i2c_bus_state_get(void)
+{
+    return bus.enabled;
+}
+
+I2cBusAddrWidth i2c_bus_addr_width_get(void)
+{
+    return bus.width;
+}
+
+I2cBusStatus i2c_bus_state_set(bool enabled)
+{
+    if (enabled == bus.enabled) {
+        return I2C_BUS_OK;
+    }
+
+    if (!enabled) {
+        bus.enabled = false;
+        HAL_I2C_DeInit(&bus.handler);
+        return I2C_BUS_OK;
+    }
+
+    I2cBusStatus status = i2c_bus_apply();
+    if (status != I2C_BUS_OK) {
+        HAL_I2C_DeInit(&bus.handler);
+        return status;
+    }
+
+    bus.enabled = true;
+    return I2C_BUS_OK;
+}
+
+I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
+{
+    bus.width = width;
+
+    return i2c_bus_refresh();
+}
+
+I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)
+{
+    if (!bus.enabled) {
+        return I2C_BUS_ERR_DISABLED;
+    }
+
+    if (addr > i2c_bus_addr_max()) {
+        return I2C_BUS_ERR_PARAM;
+    }
+
+    if (len == 0 || len > I2C_BUS_XFER_MAX_LEN) {
+        return I2C_BUS_ERR_PARAM;
+    }
+
+    i2c_bus_xfer_prepare();
+
+    return i2c_bus_wait(HAL_I2C_Master_Transmit_IT(
+        &bus.handler, i2c_bus_dev_addr(addr), (uint8_t*)data, (uint16_t)len
+    ));
+}
+
+I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count)
+{
+    if (!bus.enabled) {
+        return I2C_BUS_ERR_DISABLED;
+    }
+
+    if (addr > i2c_bus_addr_max()) {
+        return I2C_BUS_ERR_PARAM;
+    }
+
+    if (count == 0 || count > I2C_BUS_XFER_MAX_LEN) {
+        return I2C_BUS_ERR_PARAM;
+    }
+
+    i2c_bus_xfer_prepare();
+
+    return i2c_bus_wait(HAL_I2C_Master_Receive_IT(
+        &bus.handler, i2c_bus_dev_addr(addr), dst, (uint16_t)count
+    ));
+}
+
+void i2c_bus_irq_handler(void)
+{
+    I2C_HandleTypeDef* const hi2c = &bus.handler;
+    uint32_t                 isr  = hi2c->Instance->ISR;
+
+    if ((isr & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) != 0) {
+        HAL_I2C_ER_IRQHandler(hi2c);
+    }
+    else {
+        HAL_I2C_EV_IRQHandler(hi2c);
+    }
+
+    // The HAL returns the handle to ready at the end of a transfer, either
+    // completed or aborted by an error, a NACK included
+    if (bus.pending && HAL_I2C_GetState(hi2c) == HAL_I2C_STATE_READY) {
+        bus.pending = false;
+        bus.errors  = HAL_I2C_GetError(hi2c);
+        osSemaphoreRelease(bus.ready_sem);
+    }
+}
 
 /**
  * @brief Get max address of the slave allowed by the current width.
@@ -143,69 +276,6 @@ static I2cBusStatus i2c_bus_refresh(void)
     return i2c_bus_apply();
 }
 
-void i2c_bus_init(void)
-{
-    bus.ready_sem = osSemaphoreNew(1, 0, NULL);
-    bus.mutex     = osMutexNew(NULL);
-
-    // The de-init of a handle touches its peripheral, so the handle of the bus
-    // needs it before the first one
-    bus.handler.Instance = I2C2;
-
-    // The peripheral is brought up by the setup of the board on its own handle,
-    // the bus takes it over with the one above
-    HAL_I2C_DeInit(&hi2c2);
-
-    i2c_bus_reset();
-}
-
-void i2c_bus_reset(void)
-{
-    bus.enabled = false;
-    bus.width   = I2C_BUS_WIDTH_7BIT;
-
-    HAL_I2C_DeInit(&bus.handler);
-}
-
-I2cBusStatus i2c_bus_state_set(bool enabled)
-{
-    if (enabled == bus.enabled) {
-        return I2C_BUS_OK;
-    }
-
-    if (!enabled) {
-        bus.enabled = false;
-        HAL_I2C_DeInit(&bus.handler);
-        return I2C_BUS_OK;
-    }
-
-    const I2cBusStatus status = i2c_bus_apply();
-    if (status != I2C_BUS_OK) {
-        HAL_I2C_DeInit(&bus.handler);
-        return status;
-    }
-
-    bus.enabled = true;
-    return I2C_BUS_OK;
-}
-
-bool i2c_bus_state_get(void)
-{
-    return bus.enabled;
-}
-
-I2cBusStatus i2c_bus_addr_width_set(I2cBusAddrWidth width)
-{
-    bus.width = width;
-
-    return i2c_bus_refresh();
-}
-
-I2cBusAddrWidth i2c_bus_addr_width_get(void)
-{
-    return bus.width;
-}
-
 /**
  * @brief Prepare the bus for a transfer started in the interrupt mode.
  *
@@ -245,67 +315,4 @@ static I2cBusStatus i2c_bus_wait(HAL_StatusTypeDef started)
     }
 
     return i2c_bus_status(bus.errors);
-}
-
-I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len)
-{
-    if (!bus.enabled) {
-        return I2C_BUS_ERR_DISABLED;
-    }
-
-    if (addr > i2c_bus_addr_max()) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    if (len == 0 || len > I2C_BUS_XFER_MAX_LEN) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    i2c_bus_xfer_prepare();
-
-    return i2c_bus_wait(HAL_I2C_Master_Transmit_IT(
-        &bus.handler, i2c_bus_dev_addr(addr), (uint8_t*)data, (uint16_t)len
-    ));
-}
-
-I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count)
-{
-    if (!bus.enabled) {
-        return I2C_BUS_ERR_DISABLED;
-    }
-
-    if (addr > i2c_bus_addr_max()) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    if (count == 0 || count > I2C_BUS_XFER_MAX_LEN) {
-        return I2C_BUS_ERR_PARAM;
-    }
-
-    i2c_bus_xfer_prepare();
-
-    return i2c_bus_wait(HAL_I2C_Master_Receive_IT(
-        &bus.handler, i2c_bus_dev_addr(addr), dst, (uint16_t)count
-    ));
-}
-
-void i2c_bus_irq_handler(void)
-{
-    I2C_HandleTypeDef* const hi2c = &bus.handler;
-    const uint32_t           isr  = hi2c->Instance->ISR;
-
-    if ((isr & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) != 0) {
-        HAL_I2C_ER_IRQHandler(hi2c);
-    }
-    else {
-        HAL_I2C_EV_IRQHandler(hi2c);
-    }
-
-    // The HAL returns the handle to ready at the end of a transfer, either
-    // completed or aborted by an error, a NACK included
-    if (bus.pending && HAL_I2C_GetState(hi2c) == HAL_I2C_STATE_READY) {
-        bus.pending = false;
-        bus.errors  = HAL_I2C_GetError(hi2c);
-        osSemaphoreRelease(bus.ready_sem);
-    }
 }

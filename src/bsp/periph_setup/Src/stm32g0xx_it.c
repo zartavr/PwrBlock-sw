@@ -25,7 +25,7 @@
 #include <device/usbd.h>
 #include <usbpd_hw_if.h>
 
-#include "bsp/drivers/ext_conn/i2c_bus.h"
+#include "bsp/drivers/ext_conn/i2c_bus_it.h"
 
 // UCPD Trace module
 #ifdef _TRACE

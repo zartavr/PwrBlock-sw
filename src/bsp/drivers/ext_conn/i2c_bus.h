@@ -122,15 +122,3 @@ I2cBusStatus i2c_bus_write(uint32_t addr, const uint8_t* data, uint32_t len);
  * range.
  */
 I2cBusStatus i2c_bus_read(uint32_t addr, uint8_t* dst, uint32_t count);
-
-/**
- * @brief Serve the interrupt of I2C2, called from I2C2_3_IRQHandler().
- *
- * Runs the HAL handlers on the handle of the bus, which drive the transfer in
- * progress. When the HAL ends the transfer, completed or aborted by an error,
- * leaves its error code in the errors of the bus and releases the waiting
- * thread. The handle of the board setup, hi2c2, is released at init and never
- * in a transfer, so the HAL handlers that CubeMX calls on it have nothing to
- * do.
- */
-void i2c_bus_irq_handler(void);
