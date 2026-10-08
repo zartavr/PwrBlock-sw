@@ -25,7 +25,10 @@
             "binaryDir": "${sourceDir}/build",
             "environment": {},
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_FLAGS": "-DCFG_TUSB_DEBUG=0",
+                "TRACE_USBPD": false
+
             }
         },
         {
