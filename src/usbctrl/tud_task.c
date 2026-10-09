@@ -42,22 +42,13 @@
  * THE SOFTWARE.
  */
 
-#include <cmsis_os2.h>
 #include <tusb.h>
 
-#include "scpi/scpi_def.h"
-
-#ifdef USB_MODE_TMC
-#include "usbtmc/usbtmc_app.h"
-#elif USB_MODE_CDC
-#include "usbcdc/usbcdc_app.h"
-#endif
+#include "usb_class.h"
 
 void usb_app_init(void)
 {
-#ifdef USB_MODE_TMC
-    usbtmc_app_init();
-#endif
+    usb_class_init();
 }
 
 void tud_app_task(void* argument)
@@ -79,27 +70,7 @@ void scpi_parser_app_task(void* argument)
 {
     (void)argument;
 
-    SCPI_Init(
-        &scpi_context,
-        scpi_commands,
-        &scpi_interface,
-        scpi_units_def,
-        SCPI_IDN1,
-        SCPI_IDN2,
-        SCPI_IDN3,
-        SCPI_IDN4,
-        scpi_input_buffer,
-        SCPI_INPUT_BUFFER_LENGTH,
-        scpi_error_queue_data,
-        SCPI_ERROR_QUEUE_SIZE
-    );
-
     while (true) {
-#ifdef USB_MODE_TMC
-        usbtmc_app_task_iter();
-#elif USB_MODE_CDC
-        usbcdc_app_task_iter();
-        osDelay(100 / portTICK_PERIOD_MS);
-#endif
+        usb_class_scpi_iter();
     }
 }

@@ -10,11 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-char         scpi_input_buffer[SCPI_INPUT_BUFFER_LENGTH];
-scpi_error_t scpi_error_queue_data[SCPI_ERROR_QUEUE_SIZE];
-scpi_t       scpi_context;
-
-
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -359,70 +354,6 @@ const scpi_command_t scpi_commands[] = {
 
     SCPI_CMD_LIST_END
 };
-
-scpi_interface_t scpi_interface = {
-    .error   = SCPI_Error,
-    .write   = SCPI_Write,
-    .control = SCPI_Control,
-    .flush   = SCPI_Flush,
-    .reset   = SCPI_Reset,
-};
-
-static bool output_overflow;
-
-static size_t output_buffer_write(
-    scpi_t* context, const char* data, size_t len
-)
-{
-    // Room for the data and the terminating '\0'
-    size_t room = SCPI_OUTPUT_BUFFER_LENGTH - 1u - buffer_in_len;
-
-    if (buffer_in_len == 0) {
-        output_overflow = false;
-    }
-    if (len > room) {
-        // Report once per response, the rest of it is dropped
-        len = room;
-        if (!output_overflow) {
-            output_overflow = true;
-            SCPI_ErrorPush(context, SCPI_ERROR_OUT_OF_MEMORY_FOR_REQ_OP);
-        }
-    }
-    memcpy(buffer_in + buffer_in_len, data, len);
-    buffer_in_len += len;
-    buffer_in[buffer_in_len] = '\0';
-    return len;
-}
-
-size_t SCPI_Write(scpi_t* context, const char* data, size_t len)
-{
-    return output_buffer_write(context, data, len);
-}
-
-scpi_result_t SCPI_Flush(scpi_t* context)
-{
-    (void)context;
-    return SCPI_RES_OK;
-}
-
-int SCPI_Error(scpi_t* context, int_fast16_t err)
-{
-    (void)context;
-    (void)err;
-    return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_Control(
-    scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val
-)
-{
-    // TODO: on SCPI_CTRL_SRQ send the USB488 SRQ notification on
-    // interrupt-IN, blocked by a TinyUSB 0.19.0 bug (see tud_usbtmc_get_stb_cb)
-    (void)context;
-    (void)ctrl;
-    (void)val;
-    return SCPI_RES_OK;
-}
 
 scpi_result_t SCPI_Reset(scpi_t* context)
 {

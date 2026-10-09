@@ -42,38 +42,62 @@
  * THE SOFTWARE.
  */
 
-#include <class/cdc/cdc_device.h>
+#include "scpi/scpi_io.h"
+#include "tusb.h"
+#include "usbctrl/usb_class.h"
+#include <cmsis_os2.h>
 #include <stdint.h>
 
-#include "scpi/scpi_def.h"
+// Event from the TinyUSB thread to the SCPI thread. The CDC FIFOs are
+// mutex-protected, so the SCPI thread reads and writes them directly.
+#define EVT_RX (1u << 0)  // data in the CDC RX FIFO
 
-// Host-centric directions out: from PC, in: to device
-#define BUF_OUT_SIZE 256
-#define BUF_IN_SIZE  SCPI_OUTPUT_BUFFER_LENGTH
-uint8_t buffer_in[BUF_IN_SIZE];
-size_t  buffer_in_len;
+static osEventFlagsId_t cdc_evt;
 
-void usbcdc_app_task_iter(void)
+void usb_class_init(void)
 {
-    if (tud_cdc_connected()) {
-        // connected and there are data available
-        if (buffer_in_len > 0) {
-            // TODO: Fix data loss in case buffer_in_len >
-            // CFG_TUD_CDC_TX_BUFSIZE
-            tud_cdc_write(buffer_in, buffer_in_len);
-            tud_cdc_write_flush();
-            buffer_in_len = 0;
+    cdc_evt = osEventFlagsNew(NULL);
+    scpi_io_init();
+}
+
+// Sends the response in portions as the TX FIFO frees up, drops it if the
+// terminal disconnects
+static void response_send(void)
+{
+    const uint8_t* data;
+    size_t         len = scpi_io_response(&data);
+    size_t         ix  = 0;
+
+    while ((ix < len) && tud_cdc_connected()) {
+        uint32_t n = tud_cdc_write(&data[ix], len - ix);
+        tud_cdc_write_flush();
+        ix += n;
+        if (n == 0) {
+            osDelay(1);
         }
+    }
+    scpi_io_response_drop();
+}
+
+void usb_class_scpi_iter(void)
+{
+    uint8_t  buffer_out[CFG_TUD_CDC_RX_BUFSIZE];
+    uint32_t len;
+
+    uint32_t evt =
+        osEventFlagsWait(cdc_evt, EVT_RX, osFlagsWaitAny, osWaitForever);
+    if (evt & osFlagsError) {
+        return;
+    }
+
+    while ((len = tud_cdc_read(buffer_out, sizeof(buffer_out))) > 0) {
+        scpi_io_input((const char*)buffer_out, len);
+        response_send();
     }
 }
 
 void tud_cdc_rx_cb(uint8_t itf)
 {
     (void)itf;
-    uint8_t buffer_out[BUF_OUT_SIZE];
-    size_t  buffer_out_len = 0;
-
-    buffer_out_len = tud_cdc_read(buffer_out, BUF_IN_SIZE);
-    // TODO: Should split tud thread and parser->handler call
-    SCPI_Input(&scpi_context, (char*)buffer_out, buffer_out_len);
+    osEventFlagsSet(cdc_evt, EVT_RX);
 }
