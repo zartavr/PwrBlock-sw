@@ -49,7 +49,7 @@
 
 // Host-centric directions out: from PC, in: to device
 #define BUF_OUT_SIZE 256
-#define BUF_IN_SIZE  256
+#define BUF_IN_SIZE  SCPI_OUTPUT_BUFFER_LENGTH
 uint8_t buffer_in[BUF_IN_SIZE];
 size_t  buffer_in_len;
 
@@ -58,6 +58,8 @@ void usbcdc_app_task_iter(void)
     if (tud_cdc_connected()) {
         // connected and there are data available
         if (buffer_in_len > 0) {
+            // TODO: Fix data loss in case buffer_in_len >
+            // CFG_TUD_CDC_TX_BUFSIZE
             tud_cdc_write(buffer_in, buffer_in_len);
             tud_cdc_write_flush();
             buffer_in_len = 0;
@@ -72,5 +74,6 @@ void tud_cdc_rx_cb(uint8_t itf)
     size_t  buffer_out_len = 0;
 
     buffer_out_len = tud_cdc_read(buffer_out, BUF_IN_SIZE);
+    // TODO: Should split tud thread and parser->handler call
     SCPI_Input(&scpi_context, (char*)buffer_out, buffer_out_len);
 }

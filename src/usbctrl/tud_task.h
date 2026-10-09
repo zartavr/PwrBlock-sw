@@ -44,5 +44,6 @@
 
 #pragma once
 
+void usb_app_init(void);
 void tud_app_task(void* argument);
 void scpi_parser_app_task(void* argument);

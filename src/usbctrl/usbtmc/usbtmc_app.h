@@ -44,4 +44,7 @@
 
 #pragma once
 
+// Creates the RTOS objects, call before the USB and SCPI threads start
+void usbtmc_app_init(void);
+// Waits for USB events and runs the SCPI parser, call from the SCPI thread
 void usbtmc_app_task_iter(void);

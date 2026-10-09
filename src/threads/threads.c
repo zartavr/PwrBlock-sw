@@ -43,6 +43,8 @@ void thread_usbpd_init(void)
 
 void thread_usbtmc_init(void)
 {
+    usb_app_init();
+
     const osThreadAttr_t tud_thread_attr = {
         .name       = OS_TUD_NAME,
         .stack_size = OS_TUD_STACK_SIZE,
@@ -53,7 +55,7 @@ void thread_usbtmc_init(void)
 
     const osThreadAttr_t tmc_thread_attr = {
         .name       = OS_TMC_NAME,
-        .stack_size = OS_TMC_STACK_SIZE,
+        .stack_size = OS_SCPI_STACK_SIZE,
         .priority   = OS_TMC_PRIORITY
     };
 

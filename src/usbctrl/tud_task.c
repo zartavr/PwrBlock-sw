@@ -53,6 +53,13 @@
 #include "usbcdc/usbcdc_app.h"
 #endif
 
+void usb_app_init(void)
+{
+#ifdef USB_MODE_TMC
+    usbtmc_app_init();
+#endif
+}
+
 void tud_app_task(void* argument)
 {
     (void)argument;
@@ -92,7 +99,7 @@ void scpi_parser_app_task(void* argument)
         usbtmc_app_task_iter();
 #elif USB_MODE_CDC
         usbcdc_app_task_iter();
-#endif
         osDelay(100 / portTICK_PERIOD_MS);
+#endif
     }
 }
