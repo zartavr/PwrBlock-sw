@@ -19,8 +19,8 @@
 // SCPI transport implemented by the USB class selected with USB_MODE
 // (usbtmc/ or usbcdc/). The class moves messages between TinyUSB and scpi_io.
 
-// Creates the RTOS objects and initializes scpi_io, call before the USB and
-// SCPI threads start
+// Creates the RTOS objects shared by the USB and SCPI threads, call before
+// they start
 void usb_class_init(void);
 // Waits for USB events and runs the SCPI parser, call from the SCPI thread
 void usb_class_scpi_iter(void);

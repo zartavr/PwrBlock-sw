@@ -31,7 +31,8 @@ int app(void)
     uart_bus_init();
 
     thread_usbpd_init();
-    thread_usbtmc_init();
+    thread_tud_init();
+    thread_scpi_init();
     thread_regulator_init();
     thread_indication_init();
     thread_button_init();

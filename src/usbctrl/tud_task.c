@@ -46,7 +46,7 @@
 
 #include "usb_class.h"
 
-void usb_app_init(void)
+void tud_app_init(void)
 {
     usb_class_init();
 }
@@ -63,14 +63,5 @@ void tud_app_task(void* argument)
 
     while (true) {
         tud_task();
-    }
-}
-
-void scpi_parser_app_task(void* argument)
-{
-    (void)argument;
-
-    while (true) {
-        usb_class_scpi_iter();
     }
 }

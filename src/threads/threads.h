@@ -20,8 +20,10 @@
 // USBPD one-shot init task
 void thread_usbpd_init(void);
 
-// TinyUSB Threads
-void thread_usbtmc_init(void);
+// TinyUSB device Thread
+void thread_tud_init(void);
+// SCPI parser Thread
+void thread_scpi_init(void);
 
 // Application Threads
 void thread_indication_init(void);

@@ -44,6 +44,7 @@
 
 #pragma once
 
-void usb_app_init(void);
+// Creates the USB class RTOS objects, call before the scheduler starts
+void tud_app_init(void);
+// TinyUSB device stack: runs tud_task() and with it every USB class callback
 void tud_app_task(void* argument);
-void scpi_parser_app_task(void* argument);

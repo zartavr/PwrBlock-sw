@@ -55,7 +55,6 @@ static volatile bool    clear_done;
 void usb_class_init(void)
 {
     tmc_evt = osEventFlagsNew(NULL);
-    scpi_io_init();
 }
 
 static void command_parse(void)

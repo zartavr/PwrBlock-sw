@@ -35,9 +35,10 @@
 #define OS_TUD_STACK_SIZE 2048
 #define OS_TUD_NAME       "tud_app_task"
 
-#define OS_TMC_PRIORITY    osPriorityBelowNormal
+// SCPI parser Thread
+#define OS_SCPI_PRIORITY   osPriorityBelowNormal
 #define OS_SCPI_STACK_SIZE 1024
-#define OS_TMC_NAME        "scpi_parser_app_task"
+#define OS_SCPI_NAME       "scpi_parser_app_task"
 
 // Application Threads
 #define OS_IND_PRIORITY   osPriorityBelowNormal

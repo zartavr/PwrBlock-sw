@@ -22,6 +22,7 @@
 #include "monitor/monitor_task.h"
 #include "regulator/regulator_task.h"
 #include "sys_status/sys_status_task.h"
+#include "usbctrl/scpi_task.h"
 #include "usbctrl/tud_task.h"
 #include "usbpd/usbpd_task.h"
 
@@ -41,25 +42,30 @@ void thread_usbpd_init(void)
     osThreadNew(usbpd_init_task, NULL, &usbpd_thread_attr);
 }
 
-void thread_usbtmc_init(void)
+void thread_tud_init(void)
 {
-    usb_app_init();
-
     const osThreadAttr_t tud_thread_attr = {
         .name       = OS_TUD_NAME,
         .stack_size = OS_TUD_STACK_SIZE,
         .priority   = OS_TUD_PRIORITY
     };
 
-    osThreadNew(tud_app_task, NULL, &tud_thread_attr);
+    tud_app_init();
 
-    const osThreadAttr_t tmc_thread_attr = {
-        .name       = OS_TMC_NAME,
+    osThreadNew(tud_app_task, NULL, &tud_thread_attr);
+}
+
+void thread_scpi_init(void)
+{
+    const osThreadAttr_t scpi_thread_attr = {
+        .name       = OS_SCPI_NAME,
         .stack_size = OS_SCPI_STACK_SIZE,
-        .priority   = OS_TMC_PRIORITY
+        .priority   = OS_SCPI_PRIORITY
     };
 
-    osThreadNew(scpi_parser_app_task, NULL, &tmc_thread_attr);
+    scpi_parser_app_init();
+
+    osThreadNew(scpi_parser_app_task, NULL, &scpi_thread_attr);
 }
 
 void thread_indication_init(void)

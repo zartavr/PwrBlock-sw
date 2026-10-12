@@ -57,7 +57,6 @@ static osEventFlagsId_t cdc_evt;
 void usb_class_init(void)
 {
     cdc_evt = osEventFlagsNew(NULL);
-    scpi_io_init();
 }
 
 // Sends the response in portions as the TX FIFO frees up, drops it if the
