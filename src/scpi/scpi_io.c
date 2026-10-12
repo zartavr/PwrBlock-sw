@@ -28,8 +28,8 @@ static scpi_error_t scpi_error_queue_data[SCPI_ERROR_QUEUE_SIZE];
 // libscpi line buffer, one byte is kept for the '\0' the parser needs
 static char         scpi_input_buffer[SCPI_INPUT_BUFFER_LENGTH];
 
-// Response to the host: written by SCPI_Write while parsing, read by the USB
-// class until scpi_io_response_drop
+// Response to the host: written by SCPI_Write while parsing, read by the
+// transport until scpi_io_response_drop
 static uint8_t response[SCPI_OUTPUT_BUFFER_LENGTH];
 static size_t  response_len;
 static bool    output_overflow;

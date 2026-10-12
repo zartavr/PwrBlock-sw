@@ -42,61 +42,119 @@
  * THE SOFTWARE.
  */
 
-#include "scpi/scpi_io.h"
+// CDC transport: lends received chunks to the SCPI thread through
+// scpi_transport and writes responses to the CDC TX FIFO as it frees up. All
+// transport state is changed in the TinyUSB thread only, the SCPI thread
+// hands responses back through scpi_transport_published_cb.
+
 #include "tusb.h"
-#include "usbctrl/usb_class.h"
-#include <cmsis_os2.h>
-#include <stdint.h>
+#include "usbctrl/scpi_transport_usb.h"
 
-// Event from the TinyUSB thread to the SCPI thread. The CDC FIFOs are
-// mutex-protected, so the SCPI thread reads and writes them directly.
-#define EVT_RX (1u << 0)  // data in the CDC RX FIFO
+// Chunk read from the CDC RX FIFO, lent to the SCPI thread until it publishes
+// the response. The rest stays in the FIFO, TinyUSB NAKs the host when it is
+// full.
+static uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
+static bool    rx_lent;
 
-static osEventFlagsId_t cdc_evt;
+_Static_assert(
+    sizeof(rx_buf) < SCPI_TP_MSG_SIZE,
+    "a CDC chunk must fit the scpi_io input buffer"
+);
 
-void usb_class_init(void)
+// Response published by the SCPI thread, written to the TX FIFO from tx_ix.
+// resp_len is 0 if there is nothing to write.
+static const uint8_t* resp;
+static size_t         resp_len;
+static size_t         tx_ix;
+
+// Lend the next received chunk unless one is lent or a response is written
+static void rx_lend_next(void)
 {
-    cdc_evt = osEventFlagsNew(NULL);
-}
-
-// Sends the response in portions as the TX FIFO frees up, drops it if the
-// terminal disconnects
-static void response_send(void)
-{
-    const uint8_t* data;
-    size_t         len = scpi_io_response(&data);
-    size_t         ix  = 0;
-
-    while ((ix < len) && tud_cdc_connected()) {
-        uint32_t n = tud_cdc_write(&data[ix], len - ix);
-        tud_cdc_write_flush();
-        ix += n;
-        if (n == 0) {
-            osDelay(1);
-        }
-    }
-    scpi_io_response_drop();
-}
-
-void usb_class_scpi_iter(void)
-{
-    uint8_t  buffer_out[CFG_TUD_CDC_RX_BUFSIZE];
-    uint32_t len;
-
-    uint32_t evt =
-        osEventFlagsWait(cdc_evt, EVT_RX, osFlagsWaitAny, osWaitForever);
-    if (evt & osFlagsError) {
+    if (rx_lent || (resp_len > 0)) {
         return;
     }
 
-    while ((len = tud_cdc_read(buffer_out, sizeof(buffer_out))) > 0) {
-        scpi_io_input((const char*)buffer_out, len);
-        response_send();
+    uint32_t len = tud_cdc_read(rx_buf, sizeof(rx_buf));
+    if (len > 0) {
+        rx_lent = true;
+        scpi_transport_lend(rx_buf, len, false, false);
     }
 }
+
+// The response is written or dropped
+static void resp_finish(void)
+{
+    resp_len = 0;
+    tx_ix    = 0;
+    scpi_transport_post(SCPI_TP_RESP_DONE);
+    rx_lend_next();
+}
+
+// Writes the response as the TX FIFO frees up, drops it if the terminal
+// disconnects
+static void tx_continue(void)
+{
+    while ((tx_ix < resp_len) && tud_cdc_connected()) {
+        uint32_t n = tud_cdc_write(&resp[tx_ix], resp_len - tx_ix);
+        tud_cdc_write_flush();
+        if (n == 0) {
+            // FIFO full: continues in tud_cdc_tx_complete_cb
+            return;
+        }
+        tx_ix += n;
+    }
+    resp_finish();
+}
+
+//--------------------------------------------------------------------+
+// scpi_transport_usb.h callbacks
+//--------------------------------------------------------------------+
+
+void scpi_transport_published_cb(const uint8_t* data, size_t len)
+{
+    rx_lent = false;
+    if (len == 0) {
+        rx_lend_next();
+        return;
+    }
+    resp     = data;
+    resp_len = len;
+    tx_ix    = 0;
+    tx_continue();
+}
+
+void scpi_transport_cleared_cb(void)
+{
+    // CDC never posts SCPI_TP_CLEAR
+}
+
+//--------------------------------------------------------------------+
+// TinyUSB callbacks
+//--------------------------------------------------------------------+
 
 void tud_cdc_rx_cb(uint8_t itf)
 {
     (void)itf;
-    osEventFlagsSet(cdc_evt, EVT_RX);
+    rx_lend_next();
+}
+
+void tud_cdc_tx_complete_cb(uint8_t itf)
+{
+    (void)itf;
+    if (resp_len > 0) {
+        tx_continue();
+    }
+}
+
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+    (void)itf;
+    (void)dtr;
+    (void)rts;
+    // The terminal opened or closed the port: a response still being written
+    // belongs to the old session. This also recovers from an unplug in the
+    // middle of a response, which never completes its transfer.
+    if (resp_len > 0) {
+        resp_finish();
+    }
 }

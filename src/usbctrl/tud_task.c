@@ -44,13 +44,6 @@
 
 #include <tusb.h>
 
-#include "usb_class.h"
-
-void tud_app_init(void)
-{
-    usb_class_init();
-}
-
 void tud_app_task(void* argument)
 {
     (void)argument;
@@ -62,6 +55,7 @@ void tud_app_task(void* argument)
     tusb_init(BOARD_TUD_RHPORT, &dev_init);
 
     while (true) {
+        // TinyUSB device task, calls usb class specific callbacks tud_*_cb
         tud_task();
     }
 }

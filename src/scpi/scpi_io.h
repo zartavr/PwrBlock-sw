@@ -16,7 +16,7 @@
 
 #pragma once
 
-// IEEE 488.2 message exchange over libscpi for the USB class. The class sees
+// IEEE 488.2 message exchange over libscpi for the SCPI task. The task sees
 // messages, the response and the status byte, never libscpi itself. Every
 // function except scpi_io_init is called from the SCPI thread only.
 

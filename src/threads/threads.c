@@ -22,7 +22,7 @@
 #include "monitor/monitor_task.h"
 #include "regulator/regulator_task.h"
 #include "sys_status/sys_status_task.h"
-#include "usbctrl/scpi_task.h"
+#include "scpi/scpi_task.h"
 #include "usbctrl/tud_task.h"
 #include "usbpd/usbpd_task.h"
 
@@ -49,8 +49,6 @@ void thread_tud_init(void)
         .stack_size = OS_TUD_STACK_SIZE,
         .priority   = OS_TUD_PRIORITY
     };
-
-    tud_app_init();
 
     osThreadNew(tud_app_task, NULL, &tud_thread_attr);
 }

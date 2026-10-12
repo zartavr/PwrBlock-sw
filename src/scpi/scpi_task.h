@@ -16,9 +16,10 @@
 
 #pragma once
 
-// SCPI parser thread: waits for messages from the USB class, parses them with
-// libscpi and hands the response back. The only thread that calls scpi_io.
+// SCPI parser thread: the IEEE 488.2 message exchange. Waits for transport
+// events, parses messages with libscpi and hands responses back. The only
+// thread that calls scpi_io and scpi_transport.
 
-// Initializes libscpi, call before the scheduler starts
+// Initializes libscpi and the transport, call before the scheduler starts
 void scpi_parser_app_init(void);
 void scpi_parser_app_task(void* argument);
