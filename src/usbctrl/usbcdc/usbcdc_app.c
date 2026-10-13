@@ -156,8 +156,11 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
     (void)rts;
     // The terminal opened or closed the port: a new session starts with a
     // clear. The input of the old one, a response still being parsed or
-    // written are dropped. The latter also recovers from an unplug in the
-    // middle of a response, which never completes its transfer.
+    // written are dropped, and so are their bytes left in the FIFOs. The
+    // latter also recovers from an unplug in the middle of a response, which
+    // never completes its transfer.
     resp.sent = 0;
+    tud_cdc_read_flush();
+    tud_cdc_write_clear();
     scpi_tp_clear();
 }

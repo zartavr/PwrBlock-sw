@@ -53,23 +53,23 @@ void scpi_parser_app_task(void* argument)
     while (true) {
         uint32_t evt = scpi_app_evt_wait();
 
-        if (evt & SCPI_TP_CLEAR) {
+        if (evt & SCPI_JOB_CLEAR) {
             // IEEE 488.2 device clear: input and output are dropped, status
             // registers and the error queue are kept. A message lent before
             // the clear is dropped too, the transport takes its buffer back.
             scpi_io_device_clear();
-            evt &= ~SCPI_TP_MSG;
+            evt &= ~SCPI_JOB_MSG;
         }
-        if (evt & SCPI_TP_RESP_DONE) {
+        if (evt & SCPI_JOB_RESP_DONE) {
             scpi_io_response_drop();
         }
-        if (evt & SCPI_TP_INTERRUPTED) {
+        if (evt & SCPI_JOB_INTERRUPTED) {
             scpi_io_query_interrupted();
         }
-        if (evt & SCPI_TP_UNTERMINATED) {
+        if (evt & SCPI_JOB_UNTERMINATED) {
             scpi_io_query_unterminated();
         }
-        if (evt & SCPI_TP_MSG) {
+        if (evt & SCPI_JOB_MSG) {
             const uint8_t* resp;
 
             message_parse();
@@ -78,7 +78,7 @@ void scpi_parser_app_task(void* argument)
         }
 
         scpi_app_status_set(scpi_io_status());
-        if (evt & SCPI_TP_CLEAR) {
+        if (evt & SCPI_JOB_CLEAR) {
             scpi_app_clear_done();
         }
         scpi_app_tud_wake();

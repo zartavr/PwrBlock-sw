@@ -19,10 +19,10 @@
 // Transport that carries SCPI messages between the USB class selected with
 // USB_MODE (TinyUSB thread) and the SCPI thread.
 //
-// In:  the class lends a message and posts events with the state transitions,
+// In:  the class lends a message and posts jobs with the state transitions,
 //      the SCPI thread waits on them (event flags).
-// Out: the SCPI thread only sets flags and wakes the TinyUSB thread, the
-//      class picks them up there with scpi_tp_dispatch.
+// Out: the SCPI thread only stores its results and wakes the TinyUSB thread,
+//      the class picks them up there with scpi_tp_dispatch.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
 // thread never calls TinyUSB.
@@ -82,7 +82,7 @@ size_t scpi_tp_resp_get(const uint8_t** data);
 uint8_t scpi_tp_stb_get(void);
 
 // Wakes the thread that runs scpi_tp_dispatch, called from the SCPI thread
-// after every event it handled (scpi_app_tud_wake)
+// after every job it handled (scpi_app_tud_wake)
 typedef void (*ScpiTpWakeFn)(void);
 // Registers the wake, call once before the USB stack starts
 void scpi_tp_wake_set(ScpiTpWakeFn wake);
