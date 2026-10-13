@@ -54,7 +54,7 @@ const scpi_command_t scpi_commands[] = {
      },
     {
      .pattern  = "*STB?",
-     .callback = SCPI_CoreStbQ,
+     .callback = SCPI_StbQ,
      },
     {
      .pattern  = "*TST?",

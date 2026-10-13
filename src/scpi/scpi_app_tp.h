@@ -51,8 +51,10 @@ void scpi_tp_req_set(
 );
 // Posts the event to the SCPI thread
 void scpi_tp_evt_set(ScpiTpEvt evt);
-// Status byte last reported by the SCPI thread, for the host
-uint8_t scpi_tp_stb_get(void);
+// IEEE 488.2 status byte for the host: the status last published by the
+// SCPI thread with MAV and MSS. mav: the class holds a response not yet read
+// by the host.
+uint8_t scpi_tp_stb_get(bool mav);
 
 // The lent message is consumed. resp stays valid until the class posts
 // SCPI_TP_EVT_RESP_DONE or SCPI_TP_EVT_CLEAR; len is 0 if there is no

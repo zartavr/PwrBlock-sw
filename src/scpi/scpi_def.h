@@ -19,6 +19,8 @@ extern "C" {
 extern const scpi_command_t scpi_commands[];
 
 scpi_result_t SCPI_Reset(scpi_t* context);
+// *STB? with MAV and MSS, which libscpi's register lacks (scpi_io.c)
+scpi_result_t SCPI_StbQ(scpi_t* context);
 
 scpi_result_t SCPI_SystemCommTcpipControlQ(scpi_t* context);
 

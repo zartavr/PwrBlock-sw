@@ -77,7 +77,7 @@ void scpi_parser_app_task(void* argument)
             scpi_app_resp_set(resp, len);
         }
 
-        scpi_app_stb_set(scpi_io_stb());
+        scpi_app_status_set(scpi_io_status());
         if (evt & SCPI_TP_CLEAR) {
             scpi_app_clear_done();
         }

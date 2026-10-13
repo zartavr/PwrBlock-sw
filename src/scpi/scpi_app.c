@@ -44,10 +44,10 @@ typedef struct
 typedef struct
 {
     const uint8_t* volatile resp;
-    volatile size_t  resp_len;
-    volatile bool    published;      // resp / resp_len are set
-    volatile bool    clear_handled;  // SCPI_TP_CLEAR is handled
-    volatile uint8_t stb;            // status byte for the host
+    volatile size_t   resp_len;
+    volatile bool     published;      // resp / resp_len are set
+    volatile bool     clear_handled;  // SCPI_TP_CLEAR is handled
+    volatile uint16_t status;         // scpi_io_status, for the host
 } TpScpiState;
 
 static osEventFlagsId_t tp_evt;
@@ -97,9 +97,9 @@ void scpi_app_clear_done(void)
     scpi.clear_handled = true;
 }
 
-void scpi_app_stb_set(uint8_t stb)
+void scpi_app_status_set(uint16_t status)
 {
-    scpi.stb = stb;
+    scpi.status = status;
 }
 
 //--------------------------------------------------------------------+
@@ -137,9 +137,9 @@ void scpi_tp_evt_set(ScpiTpEvt evt)
     }
 }
 
-uint8_t scpi_tp_stb_get(void)
+uint8_t scpi_tp_stb_get(bool mav)
 {
-    return scpi.stb;
+    return scpi_io_stb_compose(scpi.status, mav);
 }
 
 void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)

@@ -62,5 +62,6 @@ void scpi_app_resp_set(const uint8_t* resp, size_t len);
 
 // SCPI_TP_CLEAR is handled: input and response are dropped
 void scpi_app_clear_done(void);
-// Status byte the transport reports to the host (USB488 READ_STATUS_BYTE)
-void scpi_app_stb_set(uint8_t stb);
+// Status from scpi_io_status, the transport composes the status byte for the
+// host from it (USB488 READ_STATUS_BYTE)
+void scpi_app_status_set(uint16_t status);

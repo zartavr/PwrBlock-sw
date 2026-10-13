@@ -71,8 +71,8 @@ static scpi_result_t SCPI_Control(
     scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val
 )
 {
-    // TODO: on SCPI_CTRL_SRQ send the USB488 SRQ notification on
-    // interrupt-IN, blocked by a TinyUSB 0.19.0 bug (see tud_usbtmc_get_stb_cb)
+    // SCPI_CTRL_SRQ is ignored: libscpi computes MSS without MAV, which only
+    // the transport knows. MSS and SRQ are its job, see scpi_io_stb_compose.
     (void)context;
     (void)ctrl;
     (void)val;
@@ -130,16 +130,12 @@ void scpi_io_input_overrun(void)
 size_t scpi_io_response(const uint8_t** data)
 {
     *data = response;
-    if (response_len > 0) {
-        SCPI_RegSetBits(&scpi_context, SCPI_REG_STB, STB_MAV);
-    }
     return response_len;
 }
 
 void scpi_io_response_drop(void)
 {
     response_len = 0;
-    SCPI_RegClearBits(&scpi_context, SCPI_REG_STB, STB_MAV);
 }
 
 void scpi_io_device_clear(void)
@@ -159,7 +155,37 @@ void scpi_io_query_unterminated(void)
     SCPI_ErrorPush(&scpi_context, SCPI_ERROR_QUERY_UNTERMINATED);
 }
 
-uint8_t scpi_io_stb(void)
+uint16_t scpi_io_status(void)
 {
-    return (uint8_t)SCPI_RegGet(&scpi_context, SCPI_REG_STB);
+    // libscpi never holds MAV, its MSS is dropped: both are composed later
+    uint8_t summary = (uint8_t)SCPI_RegGet(&scpi_context, SCPI_REG_STB)
+                    & (uint8_t)~(STB_MAV | STB_SRQ);
+    uint8_t sre = (uint8_t)SCPI_RegGet(&scpi_context, SCPI_REG_SRE)
+                & (uint8_t)~STB_SRQ;
+
+    return (uint16_t)(summary | (sre << 8));
+}
+
+uint8_t scpi_io_stb_compose(uint16_t status, bool mav)
+{
+    uint8_t stb = (uint8_t)status;
+    uint8_t sre = (uint8_t)(status >> 8);
+
+    if (mav) {
+        stb |= STB_MAV;
+    }
+    if (stb & sre) {
+        stb |= STB_SRQ;
+    }
+    return stb;
+}
+
+scpi_result_t SCPI_StbQ(scpi_t* context)
+{
+    // The output queue is the response of this message so far: the one of
+    // the previous message is read or dropped before parsing (-410)
+    uint8_t stb = scpi_io_stb_compose(scpi_io_status(), response_len > 0);
+
+    SCPI_ResultInt32(context, stb);
+    return SCPI_RES_OK;
 }
