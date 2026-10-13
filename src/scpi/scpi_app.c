@@ -30,6 +30,10 @@ typedef struct
     size_t         msg_len;
     bool           msg_end;
     bool           msg_overrun;
+
+    // Response taken from the SCPI thread, valid in SCPI_TP_STATE_RESPONSE
+    const uint8_t* resp;
+    size_t         resp_len;
 } TpTudState;
 
 // Written by the SCPI thread, which then wakes the TinyUSB thread, read by
@@ -48,8 +52,6 @@ typedef struct
 static osEventFlagsId_t tp_evt;
 static TpTudState       tud;
 static TpScpiState      scpi;
-static ScpiTpRespCb     tp_resp_cb;
-static ScpiTpClearedCb  tp_cleared_cb;
 static ScpiTpWakeFn     tp_wake;
 
 //--------------------------------------------------------------------+
@@ -66,9 +68,7 @@ static void tud_wake(void)
 
 void scpi_app_init(void)
 {
-    tp_evt        = osEventFlagsNew(NULL);
-    tp_resp_cb    = NULL;
-    tp_cleared_cb = NULL;
+    tp_evt = osEventFlagsNew(NULL);
 }
 
 uint32_t scpi_app_evt_wait(void)
@@ -168,6 +168,16 @@ void scpi_tp_clear(void)
     osEventFlagsSet(tp_evt, SCPI_TP_CLEAR);
 }
 
+size_t scpi_tp_resp_get(const uint8_t** data)
+{
+    if (tud.state != SCPI_TP_STATE_RESPONSE) {
+        *data = NULL;
+        return 0;
+    }
+    *data = tud.resp;
+    return tud.resp_len;
+}
+
 uint8_t scpi_tp_stb_get(void)
 {
     // MAV: the output queue is the response the class holds
@@ -176,19 +186,15 @@ uint8_t scpi_tp_stb_get(void)
     return scpi_io_stb_compose(scpi.status, mav);
 }
 
-void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)
-{
-    tp_resp_cb    = resp_cb;
-    tp_cleared_cb = cleared_cb;
-}
-
 void scpi_tp_wake_set(ScpiTpWakeFn wake)
 {
     tp_wake = wake;
 }
 
-void scpi_tp_dispatch(void)
+bool scpi_tp_dispatch(void)
 {
+    bool changed = false;
+
     // The SCPI thread may publish the message lent before a clear, then
     // handle the clear. Read in the reverse order of the writes, so a clear
     // seen here brings the publish before it along: it is dropped in
@@ -199,20 +205,19 @@ void scpi_tp_dispatch(void)
     if (published) {
         scpi.published = false;
         if (tud.state == SCPI_TP_STATE_PARSING) {
-            tud.state = (scpi.resp_len > 0) ? SCPI_TP_STATE_RESPONSE
-                                            : SCPI_TP_STATE_IDLE;
-            if (tp_resp_cb != NULL) {
-                tp_resp_cb(scpi.resp, scpi.resp_len);
-            }
+            tud.resp     = scpi.resp;
+            tud.resp_len = scpi.resp_len;
+            tud.state    = (tud.resp_len > 0) ? SCPI_TP_STATE_RESPONSE
+                                              : SCPI_TP_STATE_IDLE;
+            changed      = true;
         }
     }
     if (cleared) {
         scpi.clear_handled = false;
         if (tud.state == SCPI_TP_STATE_CLEARING) {
             tud.state = SCPI_TP_STATE_IDLE;
-            if (tp_cleared_cb != NULL) {
-                tp_cleared_cb();
-            }
+            changed   = true;
         }
     }
+    return changed;
 }

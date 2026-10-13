@@ -82,13 +82,12 @@ void tud_app_task(void* argument)
         .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO
     };
     tusb_init(BOARD_TUD_RHPORT, &dev_init);
-    usbclass_init();
 
     while (true) {
         osThreadFlagsWait(TUD_WAKE, osFlagsWaitAny, osWaitForever);
         // TinyUSB device task, calls usb class specific callbacks tud_*_cb
         // until the event queue is empty
         tud_task_ext(0, false);
-        scpi_tp_dispatch();
+        usbclass_dispatch();
     }
 }

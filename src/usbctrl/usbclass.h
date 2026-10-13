@@ -18,6 +18,6 @@
 
 // The USB class selected with USB_MODE (usbtmc_app.c or usbcdc_app.c)
 
-// Registers the class with the SCPI transport. Called by tud_app_task once,
-// before the first scpi_tp_dispatch.
-void usbclass_init(void);
+// Takes the results of the SCPI thread (scpi_tp_dispatch) and acts on them.
+// Called by tud_app_task after every wake, in the TinyUSB thread.
+void usbclass_dispatch(void);

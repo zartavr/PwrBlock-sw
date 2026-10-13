@@ -21,9 +21,8 @@
 //
 // In:  the class lends a message and posts events with the state transitions,
 //      the SCPI thread waits on them (event flags).
-// Out: the SCPI thread only sets flags and wakes the TinyUSB thread,
-//      scpi_tp_dispatch in the tud_task loop picks them up and calls the
-//      class callbacks there.
+// Out: the SCPI thread only sets flags and wakes the TinyUSB thread, the
+//      class picks them up there with scpi_tp_dispatch.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
 // thread never calls TinyUSB.
@@ -36,8 +35,8 @@
 #define SCPI_TP_MSG_SIZE 256
 
 // Message exchange with the SCPI thread. The state changes in the TinyUSB
-// thread only: by the scpi_tp_* calls below and by scpi_tp_dispatch before it
-// calls the class callbacks.
+// thread only: by the scpi_tp_* calls of the class and, for the results of
+// the SCPI thread, by scpi_tp_dispatch.
 //
 //   IDLE --lend--> PARSING --published--> RESPONSE --resp_done-->  IDLE
 //                          (len 0: IDLE)           --interrupted-->
@@ -57,9 +56,9 @@ typedef enum
 
 ScpiTpState scpi_tp_state(void);
 
-// IDLE -> PARSING: lends msg to the SCPI thread until ScpiTpRespCb or, if a
-// clear comes meanwhile, ScpiTpClearedCb. end: the message ended with
-// IEEE 488.2 END; overrun: it did not fit and is dropped with -363.
+// IDLE -> PARSING: lends msg to the SCPI thread until the state leaves
+// PARSING, or CLEARING if a clear comes meanwhile. end: the message ended
+// with IEEE 488.2 END; overrun: it did not fit and is dropped with -363.
 // Returns false, nothing lent, outside IDLE.
 bool scpi_tp_msg_lend(const uint8_t* msg, size_t len, bool end, bool overrun);
 // RESPONSE -> IDLE: the response was sent or aborted
@@ -74,21 +73,13 @@ void scpi_tp_unterminated(void);
 // and the response are dropped, the status is kept
 void scpi_tp_clear(void);
 
+// Response for the host, valid until the state leaves RESPONSE. 0 and NULL
+// in the other states.
+size_t scpi_tp_resp_get(const uint8_t** data);
+
 // IEEE 488.2 status byte for the host: the status last published by the
 // SCPI thread with MAV (SCPI_TP_STATE_RESPONSE) and MSS
 uint8_t scpi_tp_stb_get(void);
-
-// PARSING -> RESPONSE, or IDLE if len is 0: the lent message is consumed.
-// resp stays valid until scpi_tp_resp_done, scpi_tp_interrupted or
-// scpi_tp_clear.
-typedef void (*ScpiTpRespCb)(const uint8_t* resp, size_t len);
-// CLEARING -> IDLE: the clear is handled by the SCPI thread, a lent message
-// is returned
-typedef void (*ScpiTpClearedCb)(void);
-
-// Registers the class callbacks, call once from the class init before
-// scpi_tp_dispatch. Both are optional, a NULL one is skipped.
-void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb);
 
 // Wakes the thread that runs scpi_tp_dispatch, called from the SCPI thread
 // each time it leaves something for the dispatch
@@ -96,6 +87,9 @@ typedef void (*ScpiTpWakeFn)(void);
 // Registers the wake, call once before the USB stack starts
 void scpi_tp_wake_set(ScpiTpWakeFn wake);
 
-// Called by the tud_task loop after every wake: hands what the SCPI thread
-// published to the registered class callbacks, in the calling thread
-void scpi_tp_dispatch(void);
+// Called by the class after every wake of the TinyUSB thread: takes what the
+// SCPI thread left. PARSING -> RESPONSE, or IDLE without a response: the lent
+// message is consumed. CLEARING -> IDLE: the clear is handled, a lent message
+// is returned. Returns true if the state changed: the class receives again
+// and, in RESPONSE, has a response to send.
+bool scpi_tp_dispatch(void);

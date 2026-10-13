@@ -43,10 +43,9 @@
  */
 
 // CDC transport: lends received chunks to the SCPI thread through scpi_tp,
-// which holds the exchange state, and writes responses to the CDC TX FIFO as
-// it frees up. All of it is changed in the TinyUSB thread only, the results of
-// the SCPI thread come in resp_cb and cleared_cb, called from
-// scpi_tp_dispatch.
+// which holds the exchange state and the response, and writes responses to the
+// CDC TX FIFO as it frees up. All of it is changed in the TinyUSB thread only,
+// the results of the SCPI thread are taken in usbclass_dispatch.
 
 #include "scpi/scpi_app_tp.h"
 #include "tusb.h"
@@ -60,13 +59,10 @@ typedef struct
     uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE];
 } CdcRx;
 
-// Response published by the SCPI thread, valid in SCPI_TP_STATE_RESPONSE,
-// written to the TX FIFO from sent
+// Progress of the response (scpi_tp_resp_get) into the TX FIFO
 typedef struct
 {
-    const uint8_t* data;
-    size_t         len;
-    size_t         sent;  // bytes already written to the TX FIFO
+    size_t sent;  // bytes already written to the TX FIFO
 } CdcResp;
 
 // All of it is changed in the TinyUSB thread only
@@ -104,8 +100,11 @@ static void resp_finish(void)
 // disconnects
 static void tx_continue(void)
 {
-    while ((resp.sent < resp.len) && tud_cdc_connected()) {
-        uint32_t n = tud_cdc_write(&resp.data[resp.sent], resp.len - resp.sent);
+    const uint8_t* data;
+    size_t         len = scpi_tp_resp_get(&data);
+
+    while ((resp.sent < len) && tud_cdc_connected()) {
+        uint32_t n = tud_cdc_write(&data[resp.sent], len - resp.sent);
         tud_cdc_write_flush();
         if (n == 0) {
             // FIFO full: continues in tud_cdc_tx_complete_cb
@@ -116,32 +115,20 @@ static void tx_continue(void)
     resp_finish();
 }
 
-//--------------------------------------------------------------------+
-// scpi_app_tp.h callbacks, registered in usb_class_init and called from
-// scpi_tp_dispatch
-//--------------------------------------------------------------------+
-
-static void resp_cb(const uint8_t* data, size_t len)
+void usbclass_dispatch(void)
 {
-    if (len == 0) {
-        rx_lend_next();
+    if (!scpi_tp_dispatch()) {
         return;
     }
-    resp.data = data;
-    resp.len  = len;
+    // The chunk is consumed or the clear is handled: a response is written
+    // from its start, without one the next chunk is lent from the RX FIFO
     resp.sent = 0;
-    tx_continue();
-}
-
-static void cleared_cb(void)
-{
-    // Received meanwhile, waits in the RX FIFO
-    rx_lend_next();
-}
-
-void usbclass_init(void)
-{
-    scpi_tp_cb_set(resp_cb, cleared_cb);
+    if (scpi_tp_state() == SCPI_TP_STATE_RESPONSE) {
+        tx_continue();
+    }
+    else {
+        rx_lend_next();
+    }
 }
 
 //--------------------------------------------------------------------+
