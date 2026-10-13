@@ -22,9 +22,10 @@
 // Written by the TinyUSB thread only
 typedef struct
 {
-    // Lent message, read by the SCPI thread after SCPI_TP_MSG. The class
-    // receives nothing more until the message is returned, so they never
-    // overlap.
+    ScpiTpState state;
+
+    // Lent message, read by the SCPI thread after SCPI_TP_MSG. Valid while
+    // parsing, and while clearing if the clear came during the parse.
     const uint8_t* msg;
     size_t         msg_len;
     bool           msg_end;
@@ -34,8 +35,7 @@ typedef struct
 // Written by the SCPI thread, which then wakes the TinyUSB thread, read by
 // scpi_tp_dispatch there. The dispatch also resets the flags once it has
 // handled them; each flag is set again only after that: a new publish needs a
-// new lent message, a new clear needs the class to finish the previous one in
-// ScpiTpClearedCb.
+// new lent message, a new clear needs the previous one to complete.
 typedef struct
 {
     const uint8_t* volatile resp;
@@ -112,37 +112,67 @@ void scpi_app_status_set(uint16_t status)
 // USB class, TinyUSB thread
 //--------------------------------------------------------------------+
 
-void scpi_tp_req_set(
-    const uint8_t* msg, size_t len, bool end, bool overrun
-)
+ScpiTpState scpi_tp_state(void)
 {
+    return tud.state;
+}
+
+bool scpi_tp_msg_lend(const uint8_t* msg, size_t len, bool end, bool overrun)
+{
+    if (tud.state != SCPI_TP_STATE_IDLE) {
+        return false;
+    }
     tud.msg         = msg;
     tud.msg_len     = len;
     tud.msg_end     = end;
     tud.msg_overrun = overrun;
+    tud.state       = SCPI_TP_STATE_PARSING;
     osEventFlagsSet(tp_evt, SCPI_TP_MSG);
+    return true;
 }
 
-void scpi_tp_evt_set(ScpiTpEvt evt)
+void scpi_tp_resp_done(void)
 {
-    switch (evt) {
-        case SCPI_TP_EVT_RESP_DONE:
-            osEventFlagsSet(tp_evt, SCPI_TP_RESP_DONE);
-            break;
-        case SCPI_TP_EVT_INTERRUPTED:
-            osEventFlagsSet(tp_evt, SCPI_TP_INTERRUPTED);
-            break;
-        case SCPI_TP_EVT_UNTERMINATED:
-            osEventFlagsSet(tp_evt, SCPI_TP_UNTERMINATED);
-            break;
-        case SCPI_TP_EVT_CLEAR:
-            osEventFlagsSet(tp_evt, SCPI_TP_CLEAR);
-            break;
+    if (tud.state != SCPI_TP_STATE_RESPONSE) {
+        return;
     }
+    tud.state = SCPI_TP_STATE_IDLE;
+    osEventFlagsSet(tp_evt, SCPI_TP_RESP_DONE);
 }
 
-uint8_t scpi_tp_stb_get(bool mav)
+void scpi_tp_interrupted(void)
 {
+    if (tud.state != SCPI_TP_STATE_RESPONSE) {
+        return;
+    }
+    tud.state = SCPI_TP_STATE_IDLE;
+    osEventFlagsSet(tp_evt, SCPI_TP_INTERRUPTED);
+}
+
+void scpi_tp_unterminated(void)
+{
+    if (tud.state != SCPI_TP_STATE_IDLE) {
+        return;
+    }
+    osEventFlagsSet(tp_evt, SCPI_TP_UNTERMINATED);
+}
+
+void scpi_tp_clear(void)
+{
+    if (tud.state == SCPI_TP_STATE_CLEARING) {
+        // Nothing is lent or received while clearing, so one pending clear
+        // covers the repeated ones
+        return;
+    }
+    tud.state = SCPI_TP_STATE_CLEARING;
+    osEventFlagsSet(tp_evt, SCPI_TP_CLEAR);
+}
+
+uint8_t scpi_tp_stb_get(void)
+{
+    // MAV: the output queue is the response the class holds
+    bool mav = (tud.state == SCPI_TP_STATE_RESPONSE);
+
     return scpi_io_stb_compose(scpi.status, mav);
 }
 
@@ -159,24 +189,30 @@ void scpi_tp_wake_set(ScpiTpWakeFn wake)
 
 void scpi_tp_dispatch(void)
 {
-    // A publish pending together with a clear came first: the SCPI thread
-    // publishes the message lent before the clear, then handles the clear.
-    // In the other order the class would take a response from before the
-    // clear. Read in the reverse order of the writes, so a clear seen here
-    // brings the publish before it along.
+    // The SCPI thread may publish the message lent before a clear, then
+    // handle the clear. Read in the reverse order of the writes, so a clear
+    // seen here brings the publish before it along: it is dropped in
+    // SCPI_TP_STATE_CLEARING, never taken for a message lent after the clear.
     bool cleared   = scpi.clear_handled;
     bool published = scpi.published;
 
     if (published) {
         scpi.published = false;
-        if (tp_resp_cb != NULL) {
-            tp_resp_cb(scpi.resp, scpi.resp_len);
+        if (tud.state == SCPI_TP_STATE_PARSING) {
+            tud.state = (scpi.resp_len > 0) ? SCPI_TP_STATE_RESPONSE
+                                            : SCPI_TP_STATE_IDLE;
+            if (tp_resp_cb != NULL) {
+                tp_resp_cb(scpi.resp, scpi.resp_len);
+            }
         }
     }
     if (cleared) {
         scpi.clear_handled = false;
-        if (tp_cleared_cb != NULL) {
-            tp_cleared_cb();
+        if (tud.state == SCPI_TP_STATE_CLEARING) {
+            tud.state = SCPI_TP_STATE_IDLE;
+            if (tp_cleared_cb != NULL) {
+                tp_cleared_cb();
+            }
         }
     }
 }

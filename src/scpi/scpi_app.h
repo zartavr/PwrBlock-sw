@@ -19,8 +19,8 @@
 // Transport that carries SCPI messages between the USB class selected with
 // USB_MODE (TinyUSB thread) and the SCPI thread.
 //
-// In:  the class lends a message and posts events, the SCPI thread waits on
-//      them (event flags).
+// In:  the class lends a message and posts events with the state transitions,
+//      the SCPI thread waits on them (event flags).
 // Out: the SCPI thread only sets flags and wakes the TinyUSB thread,
 //      scpi_tp_dispatch in the tud_task loop picks them up and calls the
 //      class callbacks there.
@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 // Event flags of the transport, internal to scpi/: the USB class posts them
-// through ScpiTpEvt (scpi_app_tp.h)
+// with the scpi_tp_* transitions (scpi_app_tp.h)
 // Events returned by scpi_app_evt_wait
 enum
 {

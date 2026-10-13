@@ -42,32 +42,30 @@
  * THE SOFTWARE.
  */
 
-// CDC transport: lends received chunks to the SCPI thread through
-// scpi_tp and writes responses to the CDC TX FIFO as it frees up. All
-// transport state is changed in the TinyUSB thread only, the responses come
-// in resp_cb, called from scpi_tp_dispatch.
+// CDC transport: lends received chunks to the SCPI thread through scpi_tp,
+// which holds the exchange state, and writes responses to the CDC TX FIFO as
+// it frees up. All of it is changed in the TinyUSB thread only, the results of
+// the SCPI thread come in resp_cb and cleared_cb, called from
+// scpi_tp_dispatch.
 
 #include "scpi/scpi_app_tp.h"
 #include "tusb.h"
 #include "usbctrl/usbclass.h"
 
-// Chunk read from the CDC RX FIFO, lent to the SCPI thread until it publishes
-// the response. The rest stays in the FIFO, TinyUSB NAKs the host when it is
-// full.
+// Chunk read from the CDC RX FIFO, lent to the SCPI thread while parsing,
+// until it publishes the response. The rest stays in the FIFO, TinyUSB NAKs
+// the host when it is full.
 typedef struct
 {
     uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE];
-    bool    lent;
-    // The port was opened or closed while the chunk was lent: its response
-    // belongs to the old session and is dropped
-    bool stale;
 } CdcRx;
 
-// Response published by the SCPI thread, written to the TX FIFO from sent
+// Response published by the SCPI thread, valid in SCPI_TP_STATE_RESPONSE,
+// written to the TX FIFO from sent
 typedef struct
 {
     const uint8_t* data;
-    size_t         len;   // 0 if there is nothing to write
+    size_t         len;
     size_t         sent;  // bytes already written to the TX FIFO
 } CdcResp;
 
@@ -80,26 +78,25 @@ _Static_assert(
     "a CDC chunk must fit the scpi_io input buffer"
 );
 
-// Lend the next received chunk unless one is lent or a response is written
+// Lend the next received chunk unless one is lent, a response is written or a
+// clear is in progress
 static void rx_lend_next(void)
 {
-    if (rx.lent || (resp.len > 0)) {
+    if (scpi_tp_state() != SCPI_TP_STATE_IDLE) {
         return;
     }
 
     uint32_t len = tud_cdc_read(rx.buf, sizeof(rx.buf));
     if (len > 0) {
-        rx.lent = true;
-        scpi_tp_req_set(rx.buf, len, false, false);
+        scpi_tp_msg_lend(rx.buf, len, false, false);
     }
 }
 
 // The response is written or dropped
 static void resp_finish(void)
 {
-    resp.len  = 0;
     resp.sent = 0;
-    scpi_tp_evt_set(SCPI_TP_EVT_RESP_DONE);
+    scpi_tp_resp_done();
     rx_lend_next();
 }
 
@@ -126,10 +123,6 @@ static void tx_continue(void)
 
 static void resp_cb(const uint8_t* data, size_t len)
 {
-    bool stale = rx.stale;
-
-    rx.lent  = false;
-    rx.stale = false;
     if (len == 0) {
         rx_lend_next();
         return;
@@ -137,17 +130,18 @@ static void resp_cb(const uint8_t* data, size_t len)
     resp.data = data;
     resp.len  = len;
     resp.sent = 0;
-    if (stale) {
-        // Parsed in the old session: dropped, not written
-        resp_finish();
-        return;
-    }
     tx_continue();
+}
+
+static void cleared_cb(void)
+{
+    // Received meanwhile, waits in the RX FIFO
+    rx_lend_next();
 }
 
 void usbclass_init(void)
 {
-    scpi_tp_cb_set(resp_cb, NULL);
+    scpi_tp_cb_set(resp_cb, cleared_cb);
 }
 
 //--------------------------------------------------------------------+
@@ -163,7 +157,7 @@ void tud_cdc_rx_cb(uint8_t itf)
 void tud_cdc_tx_complete_cb(uint8_t itf)
 {
     (void)itf;
-    if (resp.len > 0) {
+    if (scpi_tp_state() == SCPI_TP_STATE_RESPONSE) {
         tx_continue();
     }
 }
@@ -173,14 +167,10 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
     (void)itf;
     (void)dtr;
     (void)rts;
-    // The terminal opened or closed the port: the response of a chunk still
-    // being parsed, or still being written, belongs to the old session. The
-    // latter also recovers from an unplug in the middle of a response, which
-    // never completes its transfer.
-    if (rx.lent) {
-        rx.stale = true;
-    }
-    if (resp.len > 0) {
-        resp_finish();
-    }
+    // The terminal opened or closed the port: a new session starts with a
+    // clear. The input of the old one, a response still being parsed or
+    // written are dropped. The latter also recovers from an unplug in the
+    // middle of a response, which never completes its transfer.
+    resp.sent = 0;
+    scpi_tp_clear();
 }

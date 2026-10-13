@@ -19,8 +19,8 @@
 // Transport that carries SCPI messages between the USB class selected with
 // USB_MODE (TinyUSB thread) and the SCPI thread.
 //
-// In:  the class lends a message and posts events, the SCPI thread waits on
-//      them (event flags).
+// In:  the class lends a message and posts events with the state transitions,
+//      the SCPI thread waits on them (event flags).
 // Out: the SCPI thread only sets flags and wakes the TinyUSB thread,
 //      scpi_tp_dispatch in the tud_task loop picks them up and calls the
 //      class callbacks there.
@@ -35,33 +35,55 @@
 // Largest message a transport lends: the scpi_io input buffer
 #define SCPI_TP_MSG_SIZE 256
 
-// Events the USB class posts to the SCPI thread with scpi_tp_evt_set.
-// A message is posted with scpi_tp_req_set.
+// Message exchange with the SCPI thread. The state changes in the TinyUSB
+// thread only: by the scpi_tp_* calls below and by scpi_tp_dispatch before it
+// calls the class callbacks.
+//
+//   IDLE --lend--> PARSING --published--> RESPONSE --resp_done-->  IDLE
+//                          (len 0: IDLE)           --interrupted-->
+//   any --clear--> CLEARING --cleared--> IDLE
 typedef enum
 {
-    SCPI_TP_EVT_RESP_DONE,     // the response was sent or discarded
-    SCPI_TP_EVT_INTERRUPTED,   // a message came before the response read
-    SCPI_TP_EVT_UNTERMINATED,  // the host asked for a missing response
-    SCPI_TP_EVT_CLEAR,         // device clear or USB re-open
-} ScpiTpEvt;
+    // Nothing lent, the class receives the next message
+    SCPI_TP_STATE_IDLE,
+    // A message is lent to the SCPI thread
+    SCPI_TP_STATE_PARSING,
+    // The class holds a response for the host (MAV)
+    SCPI_TP_STATE_RESPONSE,
+    // Device clear, waits for the SCPI thread. A message lent before stays
+    // lent, its response is dropped.
+    SCPI_TP_STATE_CLEARING,
+} ScpiTpState;
 
-// Lends msg to the SCPI thread until ScpiTpRespCb or, if a clear comes
-// meanwhile, ScpiTpClearedCb.
-void scpi_tp_req_set(
-    const uint8_t* msg, size_t len, bool end, bool overrun
-);
-// Posts the event to the SCPI thread
-void scpi_tp_evt_set(ScpiTpEvt evt);
+ScpiTpState scpi_tp_state(void);
+
+// IDLE -> PARSING: lends msg to the SCPI thread until ScpiTpRespCb or, if a
+// clear comes meanwhile, ScpiTpClearedCb. end: the message ended with
+// IEEE 488.2 END; overrun: it did not fit and is dropped with -363.
+// Returns false, nothing lent, outside IDLE.
+bool scpi_tp_msg_lend(const uint8_t* msg, size_t len, bool end, bool overrun);
+// RESPONSE -> IDLE: the response was sent or aborted
+void scpi_tp_resp_done(void);
+// RESPONSE -> IDLE: a new message came before the response was read, the
+// response is dropped with -410 (IEEE 488.2). No-op in the other states, so
+// the class may call it at every message start.
+void scpi_tp_interrupted(void);
+// IDLE: the host asked for a response that does not exist, -420
+void scpi_tp_unterminated(void);
+// Any -> CLEARING: IEEE 488.2 device clear or a new host session, the input
+// and the response are dropped, the status is kept
+void scpi_tp_clear(void);
+
 // IEEE 488.2 status byte for the host: the status last published by the
-// SCPI thread with MAV and MSS. mav: the class holds a response not yet read
-// by the host.
-uint8_t scpi_tp_stb_get(bool mav);
+// SCPI thread with MAV (SCPI_TP_STATE_RESPONSE) and MSS
+uint8_t scpi_tp_stb_get(void);
 
-// The lent message is consumed. resp stays valid until the class posts
-// SCPI_TP_EVT_RESP_DONE or SCPI_TP_EVT_CLEAR; len is 0 if there is no
-// response.
+// PARSING -> RESPONSE, or IDLE if len is 0: the lent message is consumed.
+// resp stays valid until scpi_tp_resp_done, scpi_tp_interrupted or
+// scpi_tp_clear.
 typedef void (*ScpiTpRespCb)(const uint8_t* resp, size_t len);
-// The clear is handled by the SCPI thread, the lent message is returned
+// CLEARING -> IDLE: the clear is handled by the SCPI thread, a lent message
+// is returned
 typedef void (*ScpiTpClearedCb)(void);
 
 // Registers the class callbacks, call once from the class init before
