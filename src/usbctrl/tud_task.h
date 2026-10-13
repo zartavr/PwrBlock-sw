@@ -44,5 +44,6 @@
 
 #pragma once
 
-// TinyUSB device stack: runs tud_task() and with it every USB class callback
+// TinyUSB device stack: runs tud_task_ext() and with it every USB class
+// callback, and scpi_transport_poll() for the results of the SCPI thread
 void tud_app_task(void* argument);

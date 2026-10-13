@@ -16,12 +16,16 @@
 
 #pragma once
 
-// Transport that carries SCPI messages to the SCPI thread and its responses
-// back, implemented by usbctrl/scpi_transport.c over the USB class selected
-// with USB_MODE. The class owns the transport state in the TinyUSB thread,
-// the SCPI thread only waits for events, reads the lent message and hands
-// results back. Every function except scpi_transport_init is called from the
-// SCPI thread only.
+// Transport that carries SCPI messages between the USB class selected with
+// USB_MODE (TinyUSB thread) and the SCPI thread.
+//
+// In:  the class lends a message and posts events, the SCPI thread waits on
+//      them (event flags).
+// Out: the SCPI thread only sets flags, scpi_transport_poll in the tud_task
+//      loop picks them up and calls the class callbacks in the TinyUSB thread.
+//
+// So the class owns all transport state in the TinyUSB thread and the SCPI
+// thread never calls TinyUSB.
 
 #include "scpi_io.h"
 #include <stdbool.h>
@@ -41,6 +45,10 @@
     (SCPI_TP_MSG | SCPI_TP_RESP_DONE | SCPI_TP_INTERRUPTED                     \
      | SCPI_TP_UNTERMINATED | SCPI_TP_CLEAR)
 
+//--------------------------------------------------------------------+
+// SCPI thread
+//--------------------------------------------------------------------+
+
 // Creates the RTOS objects, call before the scheduler starts
 void     scpi_transport_init(void);
 // Blocks until the transport has events, returns SCPI_TP_* (0 on error)
@@ -59,3 +67,28 @@ void   scpi_transport_publish(const uint8_t* resp, size_t len);
 void scpi_transport_clear_done(void);
 // Status byte the transport reports to the host (USB488 READ_STATUS_BYTE)
 void scpi_transport_stb(uint8_t stb);
+
+//--------------------------------------------------------------------+
+// USB class, TinyUSB thread
+//--------------------------------------------------------------------+
+
+// Lends msg to the SCPI thread until scpi_transport_published_cb or, if a
+// clear comes meanwhile, scpi_transport_cleared_cb. Posts SCPI_TP_MSG.
+void    scpi_transport_lend(const uint8_t* msg, size_t len, bool end, bool overrun);
+// Posts SCPI_TP_* events to the SCPI thread
+void    scpi_transport_post(uint32_t evt);
+// Status byte last reported by the SCPI thread, for the host
+uint8_t scpi_transport_host_stb(void);
+
+// Called by the tud_task loop after every tud_task_ext: hands what the SCPI
+// thread published to the class callbacks below. Returns the time in ms to
+// wait for the next USB event before polling again: 1 while the class waits
+// for the SCPI thread, UINT32_MAX otherwise.
+uint32_t scpi_transport_poll(void);
+
+// Implemented by the USB class, called from scpi_transport_poll:
+// The lent message is consumed. resp stays valid until the class posts
+// SCPI_TP_RESP_DONE or SCPI_TP_CLEAR; len is 0 if there is no response.
+void scpi_transport_published_cb(const uint8_t* resp, size_t len);
+// SCPI_TP_CLEAR is handled by the SCPI thread, the lent message is returned
+void scpi_transport_cleared_cb(void);

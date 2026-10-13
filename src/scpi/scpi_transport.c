@@ -14,15 +14,8 @@
  * limitations under the License.
  */
 
-// SCPI transport over TinyUSB, shared by the USB classes. The SCPI thread
-// waits on event flags and reads the lent message; what it hands back is
-// deferred to the TinyUSB thread, where the class owns all transport state.
+#include "scpi_transport.h"
 
-#include "scpi_transport_usb.h"
-
-#include "tusb.h"
-// After tusb.h: relies on its types
-#include "device/usbd_pvt.h" /* usbd_defer_func */
 #include <cmsis_os2.h>
 
 static osEventFlagsId_t tp_evt;
@@ -35,15 +28,25 @@ static size_t         msg_len;
 static bool           msg_end;
 static bool           msg_overrun;
 
-// Response passed to the deferred publish: set by the SCPI thread, read by
-// the TinyUSB thread before the next message can be lent
-static const uint8_t* pub_resp;
-static size_t         pub_len;
+// Results of the SCPI thread: set by it, taken and cleared by
+// scpi_transport_poll in the TinyUSB thread. Each flag is set again only
+// after the poll has handled it: a new publish needs a new lent message, a
+// new clear needs the class to finish the previous one in
+// scpi_transport_cleared_cb.
+static const uint8_t* volatile pub_resp;
+static volatile size_t         pub_len;
+static volatile bool           published;
+static volatile bool           cleared;
+
+// What the class waits for from the SCPI thread, TinyUSB thread only: the
+// poll runs every 1 ms while one of them is set
+static bool wait_publish;
+static bool wait_clear;
 
 static volatile uint8_t stb_snapshot;
 
 //--------------------------------------------------------------------+
-// scpi_transport.h, SCPI thread
+// SCPI thread
 //--------------------------------------------------------------------+
 
 void scpi_transport_init(void)
@@ -69,28 +72,16 @@ size_t scpi_transport_msg(const uint8_t** data, bool* end, bool* overrun)
     return msg_len;
 }
 
-static void published(void* param)
-{
-    (void)param;
-    scpi_transport_published_cb(pub_resp, pub_len);
-}
-
 void scpi_transport_publish(const uint8_t* resp, size_t len)
 {
-    pub_resp = resp;
-    pub_len  = len;
-    usbd_defer_func(published, NULL, false);
-}
-
-static void cleared(void* param)
-{
-    (void)param;
-    scpi_transport_cleared_cb();
+    pub_resp  = resp;
+    pub_len   = len;
+    published = true;
 }
 
 void scpi_transport_clear_done(void)
 {
-    usbd_defer_func(cleared, NULL, false);
+    cleared = true;
 }
 
 void scpi_transport_stb(uint8_t stb)
@@ -99,24 +90,50 @@ void scpi_transport_stb(uint8_t stb)
 }
 
 //--------------------------------------------------------------------+
-// scpi_transport_usb.h, TinyUSB thread
+// USB class, TinyUSB thread
 //--------------------------------------------------------------------+
 
 void scpi_transport_lend(const uint8_t* msg, size_t len, bool end, bool overrun)
 {
-    msg_data    = msg;
-    msg_len     = len;
-    msg_end     = end;
-    msg_overrun = overrun;
+    msg_data     = msg;
+    msg_len      = len;
+    msg_end      = end;
+    msg_overrun  = overrun;
+    wait_publish = true;
     osEventFlagsSet(tp_evt, SCPI_TP_MSG);
 }
 
 void scpi_transport_post(uint32_t evt)
 {
+    if (evt & SCPI_TP_CLEAR) {
+        wait_clear = true;
+    }
     osEventFlagsSet(tp_evt, evt);
 }
 
 uint8_t scpi_transport_host_stb(void)
 {
     return stb_snapshot;
+}
+
+uint32_t scpi_transport_poll(void)
+{
+    // A publish pending together with a clear came first: the SCPI thread
+    // publishes the message lent before the clear, then handles the clear.
+    // In the other order the class would take a response from before the
+    // clear.
+    if (published) {
+        published    = false;
+        wait_publish = false;
+        scpi_transport_published_cb(pub_resp, pub_len);
+    }
+    if (cleared) {
+        cleared      = false;
+        wait_clear   = false;
+        // A message lent before the clear is dropped, not published
+        wait_publish = false;
+        scpi_transport_cleared_cb();
+    }
+
+    return (wait_publish || wait_clear) ? 1U : UINT32_MAX;
 }

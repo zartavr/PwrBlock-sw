@@ -4,6 +4,7 @@ target_sources(
     INTERFACE scpi_def.c
               scpi_io.c
               scpi_task.c
+              scpi_transport.c
               bus_format.c
               ext_conn/digital_ctl.c
               ext_conn/i2c_ctl.c

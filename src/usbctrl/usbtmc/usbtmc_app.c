@@ -44,11 +44,12 @@
 
 // USBTMC transport: frames messages and responses over TinyUSB and lends
 // messages to the SCPI thread through scpi_transport. All transport state is
-// changed in the TinyUSB thread only, the SCPI thread hands results back
-// through scpi_transport_published_cb and scpi_transport_cleared_cb.
+// changed in the TinyUSB thread only, the results of the SCPI thread come in
+// scpi_transport_published_cb and scpi_transport_cleared_cb, called from
+// scpi_transport_poll.
 
+#include "scpi/scpi_transport.h"
 #include "tusb.h"
-#include "usbctrl/scpi_transport_usb.h"
 #include <string.h>
 
 #if (CFG_TUD_USBTMC_ENABLE_488)
@@ -148,7 +149,7 @@ static void clear_start(void)
 }
 
 //--------------------------------------------------------------------+
-// scpi_transport_usb.h callbacks
+// scpi_transport.h callbacks, called from scpi_transport_poll
 //--------------------------------------------------------------------+
 
 void scpi_transport_published_cb(const uint8_t* data, size_t len)

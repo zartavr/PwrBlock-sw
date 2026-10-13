@@ -44,6 +44,8 @@
 
 #include <tusb.h>
 
+#include "scpi/scpi_transport.h"
+
 void tud_app_task(void* argument)
 {
     (void)argument;
@@ -54,8 +56,12 @@ void tud_app_task(void* argument)
     };
     tusb_init(BOARD_TUD_RHPORT, &dev_init);
 
+    // Waits for USB events, and wakes up every 1 ms while the USB class waits
+    // for the SCPI thread: its results are taken by the poll
+    uint32_t timeout_ms = UINT32_MAX;
     while (true) {
         // TinyUSB device task, calls usb class specific callbacks tud_*_cb
-        tud_task();
+        tud_task_ext(timeout_ms, false);
+        timeout_ms = scpi_transport_poll();
     }
 }
