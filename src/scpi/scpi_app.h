@@ -66,3 +66,6 @@ void scpi_app_clear_done(void);
 // Status from scpi_io_status, the transport composes the status byte for the
 // host from it (USB488 READ_STATUS_BYTE)
 void scpi_app_status_set(uint16_t status);
+// Wakes the TinyUSB thread to take what the calls above left, call once after
+// them
+void scpi_app_tud_wake(void);

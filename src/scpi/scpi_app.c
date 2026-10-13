@@ -58,14 +58,6 @@ static ScpiTpWakeFn     tp_wake;
 // SCPI thread
 //--------------------------------------------------------------------+
 
-// Called after the state for scpi_tp_dispatch is written
-static void tud_wake(void)
-{
-    if (tp_wake != NULL) {
-        tp_wake();
-    }
-}
-
 void scpi_app_init(void)
 {
     tp_evt = osEventFlagsNew(NULL);
@@ -94,18 +86,23 @@ void scpi_app_resp_set(const uint8_t* resp, size_t len)
     scpi.resp      = resp;
     scpi.resp_len  = len;
     scpi.published = true;
-    tud_wake();
 }
 
 void scpi_app_clear_done(void)
 {
     scpi.clear_handled = true;
-    tud_wake();
 }
 
 void scpi_app_status_set(uint16_t status)
 {
     scpi.status = status;
+}
+
+void scpi_app_tud_wake(void)
+{
+    if (tp_wake != NULL) {
+        tp_wake();
+    }
 }
 
 //--------------------------------------------------------------------+

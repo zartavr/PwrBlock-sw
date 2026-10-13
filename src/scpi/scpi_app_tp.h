@@ -82,7 +82,7 @@ size_t scpi_tp_resp_get(const uint8_t** data);
 uint8_t scpi_tp_stb_get(void);
 
 // Wakes the thread that runs scpi_tp_dispatch, called from the SCPI thread
-// each time it leaves something for the dispatch
+// after every event it handled (scpi_app_tud_wake)
 typedef void (*ScpiTpWakeFn)(void);
 // Registers the wake, call once before the USB stack starts
 void scpi_tp_wake_set(ScpiTpWakeFn wake);

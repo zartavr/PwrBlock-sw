@@ -81,5 +81,6 @@ void scpi_parser_app_task(void* argument)
         if (evt & SCPI_TP_CLEAR) {
             scpi_app_clear_done();
         }
+        scpi_app_tud_wake();
     }
 }
