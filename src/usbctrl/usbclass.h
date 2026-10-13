@@ -19,5 +19,5 @@
 // The USB class selected with USB_MODE (usbtmc_app.c or usbcdc_app.c)
 
 // Registers the class with the SCPI transport. Called by tud_app_task once,
-// before the first scpi_transport_poll.
+// before the first scpi_tp_poll.
 void usbclass_init(void);

@@ -18,7 +18,7 @@
 
 // SCPI parser thread: the IEEE 488.2 message exchange. Waits for transport
 // events, parses messages with libscpi and hands responses back. The only
-// thread that calls scpi_io and scpi_transport.
+// thread that calls scpi_io and scpi_app.
 
 // Initializes libscpi and the transport, call before the scheduler starts
 void scpi_parser_app_init(void);

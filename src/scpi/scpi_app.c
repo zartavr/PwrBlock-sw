@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "transport_scpi.h"
-#include "transport_usbctl.h"
+#include "scpi_app.h"
+#include "scpi_app_tp.h"
 
 #include <cmsis_os2.h>
 
@@ -30,13 +30,13 @@ typedef struct
     bool           msg_end;
     bool           msg_overrun;
 
-    // What the class waits for from the SCPI thread: scpi_transport_poll
+    // What the class waits for from the SCPI thread: scpi_tp_poll
     // runs every 1 ms while one of them is set
     bool wait_publish;
     bool wait_clear;
 } TpTudState;
 
-// Written by the SCPI thread, read by scpi_transport_poll in the TinyUSB
+// Written by the SCPI thread, read by scpi_tp_poll in the TinyUSB
 // thread. The poll also resets the flags once it has handled them; each flag
 // is set again only after that: a new publish needs a new lent message, a new
 // clear needs the class to finish the previous one in
@@ -60,14 +60,14 @@ static ScpiTpClearedCb  tp_cleared_cb;
 // SCPI thread
 //--------------------------------------------------------------------+
 
-void scpi_transport_init(void)
+void scpi_app_init(void)
 {
     tp_evt        = osEventFlagsNew(NULL);
     tp_resp_cb    = NULL;
     tp_cleared_cb = NULL;
 }
 
-uint32_t scpi_transport_evt_wait(void)
+uint32_t scpi_app_evt_wait(void)
 {
     uint32_t evt =
         osEventFlagsWait(tp_evt, SCPI_TP_ALL, osFlagsWaitAny, osWaitForever);
@@ -77,7 +77,7 @@ uint32_t scpi_transport_evt_wait(void)
     return evt;
 }
 
-size_t scpi_transport_req_get(const uint8_t** data, bool* end, bool* overrun)
+size_t scpi_app_req_get(const uint8_t** data, bool* end, bool* overrun)
 {
     *data    = tud.msg;
     *end     = tud.msg_end;
@@ -85,19 +85,19 @@ size_t scpi_transport_req_get(const uint8_t** data, bool* end, bool* overrun)
     return tud.msg_len;
 }
 
-void scpi_transport_resp_set(const uint8_t* resp, size_t len)
+void scpi_app_resp_set(const uint8_t* resp, size_t len)
 {
     scpi.resp      = resp;
     scpi.resp_len  = len;
     scpi.published = true;
 }
 
-void scpi_transport_clear_done(void)
+void scpi_app_clear_done(void)
 {
     scpi.clear_handled = true;
 }
 
-void scpi_transport_stb_set(uint8_t stb)
+void scpi_app_stb_set(uint8_t stb)
 {
     scpi.stb = stb;
 }
@@ -106,7 +106,7 @@ void scpi_transport_stb_set(uint8_t stb)
 // USB class, TinyUSB thread
 //--------------------------------------------------------------------+
 
-void scpi_transport_req_set(
+void scpi_tp_req_set(
     const uint8_t* msg, size_t len, bool end, bool overrun
 )
 {
@@ -118,7 +118,7 @@ void scpi_transport_req_set(
     osEventFlagsSet(tp_evt, SCPI_TP_MSG);
 }
 
-void scpi_transport_evt_set(ScpiTpEvt evt)
+void scpi_tp_evt_set(ScpiTpEvt evt)
 {
     switch (evt) {
         case SCPI_TP_EVT_RESP_DONE:
@@ -137,18 +137,18 @@ void scpi_transport_evt_set(ScpiTpEvt evt)
     }
 }
 
-uint8_t scpi_transport_stb_get(void)
+uint8_t scpi_tp_stb_get(void)
 {
     return scpi.stb;
 }
 
-void scpi_transport_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)
+void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)
 {
     tp_resp_cb    = resp_cb;
     tp_cleared_cb = cleared_cb;
 }
 
-uint32_t scpi_transport_poll(void)
+uint32_t scpi_tp_poll(void)
 {
     // A publish pending together with a clear came first: the SCPI thread
     // publishes the message lent before the clear, then handles the clear.

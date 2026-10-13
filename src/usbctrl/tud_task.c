@@ -44,7 +44,7 @@
 
 #include <tusb.h>
 
-#include "scpi/transport_usbctl.h"
+#include "scpi/scpi_app_tp.h"
 #include "usbclass.h"
 
 void tud_app_task(void* argument)
@@ -64,6 +64,6 @@ void tud_app_task(void* argument)
     while (true) {
         // TinyUSB device task, calls usb class specific callbacks tud_*_cb
         tud_task_ext(timeout_ms, false);
-        timeout_ms = scpi_transport_poll();
+        timeout_ms = scpi_tp_poll();
     }
 }

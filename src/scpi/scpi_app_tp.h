@@ -21,7 +21,7 @@
 //
 // In:  the class lends a message and posts events, the SCPI thread waits on
 //      them (event flags).
-// Out: the SCPI thread only sets flags, scpi_transport_poll in the tud_task
+// Out: the SCPI thread only sets flags, scpi_tp_poll in the tud_task
 //      loop picks them up and calls the class callbacks in the TinyUSB thread.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
@@ -34,8 +34,8 @@
 // Largest message a transport lends: the scpi_io input buffer
 #define SCPI_TP_MSG_SIZE 256
 
-// Events the USB class posts to the SCPI thread with scpi_transport_evt_set.
-// A message is posted with scpi_transport_req_set.
+// Events the USB class posts to the SCPI thread with scpi_tp_evt_set.
+// A message is posted with scpi_tp_req_set.
 typedef enum
 {
     SCPI_TP_EVT_RESP_DONE,     // the response was sent or discarded
@@ -46,13 +46,13 @@ typedef enum
 
 // Lends msg to the SCPI thread until ScpiTpRespCb or, if a clear comes
 // meanwhile, ScpiTpClearedCb.
-void scpi_transport_req_set(
+void scpi_tp_req_set(
     const uint8_t* msg, size_t len, bool end, bool overrun
 );
 // Posts the event to the SCPI thread
-void scpi_transport_evt_set(ScpiTpEvt evt);
+void scpi_tp_evt_set(ScpiTpEvt evt);
 // Status byte last reported by the SCPI thread, for the host
-uint8_t scpi_transport_stb_get(void);
+uint8_t scpi_tp_stb_get(void);
 
 // The lent message is consumed. resp stays valid until the class posts
 // SCPI_TP_EVT_RESP_DONE or SCPI_TP_EVT_CLEAR; len is 0 if there is no
@@ -62,11 +62,11 @@ typedef void (*ScpiTpRespCb)(const uint8_t* resp, size_t len);
 typedef void (*ScpiTpClearedCb)(void);
 
 // Registers the class callbacks, call once from the class init before
-// scpi_transport_poll. Both are optional, a NULL one is skipped.
-void scpi_transport_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb);
+// scpi_tp_poll. Both are optional, a NULL one is skipped.
+void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb);
 
 // Called by the tud_task loop after every tud_task_ext: hands what the SCPI
 // thread published to the registered class callbacks, in the calling thread.
 // Returns the time in ms to wait for the next USB event before polling again:
 // 1 while the class waits for the SCPI thread, UINT32_MAX otherwise.
-uint32_t scpi_transport_poll(void);
+uint32_t scpi_tp_poll(void);

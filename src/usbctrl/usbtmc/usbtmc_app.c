@@ -43,13 +43,13 @@
  */
 
 // USBTMC transport: frames messages and responses over TinyUSB and lends
-// messages to the SCPI thread through scpi_transport. All transport state is
+// messages to the SCPI thread through scpi_tp. All transport state is
 // changed in the TinyUSB thread only, the results of the SCPI thread come in
-// resp_cb and cleared_cb, called from scpi_transport_poll.
+// resp_cb and cleared_cb, called from scpi_tp_poll.
 
-#include "scpi/transport_usbctl.h"
+#include "scpi/scpi_app_tp.h"
 #include "tusb.h"
-#include "usbctrl/usb_class.h"
+#include "usbctrl/usbclass.h"
 #include <string.h>
 
 #if (CFG_TUD_USBTMC_ENABLE_488)
@@ -142,12 +142,12 @@ static void resp_drop(void)
     tx_reset();
     if (resp.len > 0) {
         resp.len = 0;
-        scpi_transport_evt_set(SCPI_TP_EVT_RESP_DONE);
+        scpi_tp_evt_set(SCPI_TP_EVT_RESP_DONE);
     }
 }
 
 // IEEE 488.2 device clear: input and response are dropped here at once, the
-// SCPI thread drops its own and calls scpi_transport_clear_done. rx.buf stays
+// SCPI thread drops its own and calls scpi_app_clear_done. rx.buf stays
 // lent, if it is, until then.
 static void clear_start(void)
 {
@@ -159,13 +159,13 @@ static void clear_start(void)
         // Nothing is received while clearing, so one pending clear covers
         // the repeated ones
         clear.pending = true;
-        scpi_transport_evt_set(SCPI_TP_EVT_CLEAR);
+        scpi_tp_evt_set(SCPI_TP_EVT_CLEAR);
     }
 }
 
 //--------------------------------------------------------------------+
-// transport_usbctl.h callbacks, registered in usb_class_init and called from
-// scpi_transport_poll
+// scpi_app_tp.h callbacks, registered in usb_class_init and called from
+// scpi_tp_poll
 //--------------------------------------------------------------------+
 
 static void resp_cb(const uint8_t* data, size_t len)
@@ -196,7 +196,7 @@ static void cleared_cb(void)
 
 void usbclass_init(void)
 {
-    scpi_transport_cb_set(resp_cb, cleared_cb);
+    scpi_tp_cb_set(resp_cb, cleared_cb);
 }
 
 //--------------------------------------------------------------------+
@@ -232,7 +232,7 @@ bool tud_usbtmc_msgBulkOut_start_cb(
         // and reports Query INTERRUPTED (IEEE 488.2). A message is lent only
         // at EOM, so a response is pending only before its first transfer.
         resp.len = 0;
-        scpi_transport_evt_set(SCPI_TP_EVT_INTERRUPTED);
+        scpi_tp_evt_set(SCPI_TP_EVT_INTERRUPTED);
     }
     return true;
 }
@@ -255,7 +255,7 @@ bool tud_usbtmc_msg_data_cb(void* data, size_t len, bool transfer_complete)
     if (transfer_complete && rx.eom) {
         // Bulk-OUT stays NAKed until the SCPI thread publishes the response
         rx.lent = true;
-        scpi_transport_req_set(rx.buf, rx.len, true, rx.overrun);
+        scpi_tp_req_set(rx.buf, rx.len, true, rx.overrun);
     }
     else {
         rx_arm();
@@ -270,7 +270,7 @@ bool tud_usbtmc_msgBulkIn_request_cb(
     if (resp.len == 0) {
         // Nothing to send: Query UNTERMINATED (IEEE 488.2). The request stays
         // NAKed until the host times out and aborts it (USBTMC).
-        scpi_transport_evt_set(SCPI_TP_EVT_UNTERMINATED);
+        scpi_tp_evt_set(SCPI_TP_EVT_UNTERMINATED);
         return true;
     }
     if (request->TransferSize == 0) {
@@ -363,7 +363,7 @@ uint8_t tud_usbtmc_get_stb_cb(uint8_t* tmcResult)
     // MSS in bit 6. tud_usbtmc_transmit_notification_data() in TinyUSB 0.19.0
     // checks usbd_edpt_busy() without negation and never sends, so for now
     // the host has to poll READ_STATUS_BYTE.
-    return scpi_transport_stb_get();
+    return scpi_tp_stb_get();
 }
 
 bool tud_usbtmc_indicator_pulse_cb(

@@ -21,7 +21,7 @@
 //
 // In:  the class lends a message and posts events, the SCPI thread waits on
 //      them (event flags).
-// Out: the SCPI thread only sets flags, scpi_transport_poll in the tud_task
+// Out: the SCPI thread only sets flags, scpi_tp_poll in the tud_task
 //      loop picks them up and calls the class callbacks in the TinyUSB thread.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
@@ -33,8 +33,8 @@
 #include <stdint.h>
 
 // Event flags of the transport, internal to scpi/: the USB class posts them
-// through ScpiTpEvt (transport_usbctl.h)
-// Events returned by scpi_transport_evt_wait
+// through ScpiTpEvt (scpi_app_tp.h)
+// Events returned by scpi_app_evt_wait
 enum
 {
     SCPI_TP_MSG          = 1u << 0,  // a message is lent, see _req_get
@@ -47,20 +47,20 @@ enum
 };
 
 // Creates the RTOS objects, call before the scheduler starts
-void scpi_transport_init(void);
+void scpi_app_init(void);
 // Blocks until the transport has events, returns SCPI_TP_* (0 on error)
-uint32_t scpi_transport_evt_wait(void);
+uint32_t scpi_app_evt_wait(void);
 
-// The message lent with SCPI_TP_MSG, valid until scpi_transport_resp_set.
+// The message lent with SCPI_TP_MSG, valid until scpi_app_resp_set.
 // end: the message ended with IEEE 488.2 END; overrun: it did not fit the
 // transport buffer and is dropped.
-size_t scpi_transport_req_get(const uint8_t** data, bool* end, bool* overrun);
+size_t scpi_app_req_get(const uint8_t** data, bool* end, bool* overrun);
 // The lent message is consumed: hands over its response (len 0 if none) and
 // lets the transport accept the next message. resp stays valid until
 // SCPI_TP_RESP_DONE or SCPI_TP_CLEAR.
-void scpi_transport_resp_set(const uint8_t* resp, size_t len);
+void scpi_app_resp_set(const uint8_t* resp, size_t len);
 
 // SCPI_TP_CLEAR is handled: input and response are dropped
-void scpi_transport_clear_done(void);
+void scpi_app_clear_done(void);
 // Status byte the transport reports to the host (USB488 READ_STATUS_BYTE)
-void scpi_transport_stb_set(uint8_t stb);
+void scpi_app_stb_set(uint8_t stb);

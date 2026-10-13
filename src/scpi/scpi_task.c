@@ -17,14 +17,14 @@
 #include "scpi_task.h"
 
 #include "scpi_io.h"
-#include "transport_scpi.h"
+#include "scpi_app.h"
 
 #include <stdbool.h>
 
 void scpi_parser_app_init(void)
 {
     scpi_io_init();
-    scpi_transport_init();
+    scpi_app_init();
 }
 
 static void message_parse(void)
@@ -32,7 +32,7 @@ static void message_parse(void)
     const uint8_t* msg;
     bool           end;
     bool           overrun;
-    size_t         len = scpi_transport_req_get(&msg, &end, &overrun);
+    size_t         len = scpi_app_req_get(&msg, &end, &overrun);
 
     if (overrun) {
         scpi_io_input_overrun();
@@ -51,7 +51,7 @@ void scpi_parser_app_task(void* argument)
     (void)argument;
 
     while (true) {
-        uint32_t evt = scpi_transport_evt_wait();
+        uint32_t evt = scpi_app_evt_wait();
 
         if (evt & SCPI_TP_CLEAR) {
             // IEEE 488.2 device clear: input and output are dropped, status
@@ -74,12 +74,12 @@ void scpi_parser_app_task(void* argument)
 
             message_parse();
             size_t len = scpi_io_response(&resp);
-            scpi_transport_resp_set(resp, len);
+            scpi_app_resp_set(resp, len);
         }
 
-        scpi_transport_stb_set(scpi_io_stb());
+        scpi_app_stb_set(scpi_io_stb());
         if (evt & SCPI_TP_CLEAR) {
-            scpi_transport_clear_done();
+            scpi_app_clear_done();
         }
     }
 }

@@ -43,11 +43,11 @@
  */
 
 // CDC transport: lends received chunks to the SCPI thread through
-// scpi_transport and writes responses to the CDC TX FIFO as it frees up. All
+// scpi_tp and writes responses to the CDC TX FIFO as it frees up. All
 // transport state is changed in the TinyUSB thread only, the responses come
-// in resp_cb, called from scpi_transport_poll.
+// in resp_cb, called from scpi_tp_poll.
 
-#include "scpi/transport_usbctl.h"
+#include "scpi/scpi_app_tp.h"
 #include "tusb.h"
 #include "usbctrl/usbclass.h"
 
@@ -90,7 +90,7 @@ static void rx_lend_next(void)
     uint32_t len = tud_cdc_read(rx.buf, sizeof(rx.buf));
     if (len > 0) {
         rx.lent = true;
-        scpi_transport_req_set(rx.buf, len, false, false);
+        scpi_tp_req_set(rx.buf, len, false, false);
     }
 }
 
@@ -99,7 +99,7 @@ static void resp_finish(void)
 {
     resp.len  = 0;
     resp.sent = 0;
-    scpi_transport_evt_set(SCPI_TP_EVT_RESP_DONE);
+    scpi_tp_evt_set(SCPI_TP_EVT_RESP_DONE);
     rx_lend_next();
 }
 
@@ -120,8 +120,8 @@ static void tx_continue(void)
 }
 
 //--------------------------------------------------------------------+
-// transport_usbctl.h callbacks, registered in usb_class_init and called from
-// scpi_transport_poll
+// scpi_app_tp.h callbacks, registered in usb_class_init and called from
+// scpi_tp_poll
 //--------------------------------------------------------------------+
 
 static void resp_cb(const uint8_t* data, size_t len)
@@ -147,7 +147,7 @@ static void resp_cb(const uint8_t* data, size_t len)
 
 void usbclass_init(void)
 {
-    scpi_transport_cb_set(resp_cb, NULL);
+    scpi_tp_cb_set(resp_cb, NULL);
 }
 
 //--------------------------------------------------------------------+
