@@ -50,6 +50,7 @@
 #include "scpi/scpi_app_tp.h"
 #include "tusb.h"
 #include "usbctrl/usbclass.h"
+#include <scpi/ieee488.h>
 #include <string.h>
 
 #if (CFG_TUD_USBTMC_ENABLE_488)
@@ -357,13 +358,12 @@ void tud_usbtmc_bulkOut_clearFeature_cb(void)
 // argument.
 uint8_t tud_usbtmc_get_stb_cb(uint8_t* tmcResult)
 {
-    *tmcResult = USBTMC_STATUS_SUCCESS;
-    // TODO: send the USB488 SRQ notification (bNotify1 = 0x81, STB) on
-    // interrupt-IN when RQS rises (SCPI_CTRL_SRQ), and return RQS instead of
-    // MSS in bit 6. tud_usbtmc_transmit_notification_data() in TinyUSB 0.19.0
-    // checks usbd_edpt_busy() without negation and never sends, so for now
-    // the host has to poll READ_STATUS_BYTE.
-    return scpi_tp_stb_get();
+    *tmcResult  = USBTMC_STATUS_SUCCESS;
+    uint8_t stb = scpi_tp_stb_get() & ~STB_MAV;
+    if (resp.len > 0) {
+        stb |= STB_MAV;
+    }
+    return stb;
 }
 
 bool tud_usbtmc_indicator_pulse_cb(
