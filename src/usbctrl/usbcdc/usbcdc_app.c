@@ -45,10 +45,11 @@
 // CDC transport: lends received chunks to the SCPI thread through
 // scpi_transport and writes responses to the CDC TX FIFO as it frees up. All
 // transport state is changed in the TinyUSB thread only, the responses come
-// in scpi_transport_resp_cb, called from scpi_transport_poll.
+// in resp_cb, called from scpi_transport_poll.
 
 #include "scpi/transport_usbctl.h"
 #include "tusb.h"
+#include "usbctrl/usbclass.h"
 
 // Chunk read from the CDC RX FIFO, lent to the SCPI thread until it publishes
 // the response. The rest stays in the FIFO, TinyUSB NAKs the host when it is
@@ -119,10 +120,11 @@ static void tx_continue(void)
 }
 
 //--------------------------------------------------------------------+
-// transport_usbctl.h callbacks, called from scpi_transport_poll
+// transport_usbctl.h callbacks, registered in usb_class_init and called from
+// scpi_transport_poll
 //--------------------------------------------------------------------+
 
-void scpi_transport_resp_cb(const uint8_t* data, size_t len)
+static void resp_cb(const uint8_t* data, size_t len)
 {
     bool stale = rx.stale;
 
@@ -143,9 +145,9 @@ void scpi_transport_resp_cb(const uint8_t* data, size_t len)
     tx_continue();
 }
 
-void scpi_transport_cleared_cb(void)
+void usbclass_init(void)
 {
-    // CDC never posts SCPI_TP_EVT_CLEAR
+    scpi_transport_cb_set(resp_cb, NULL);
 }
 
 //--------------------------------------------------------------------+

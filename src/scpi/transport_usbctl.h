@@ -44,8 +44,8 @@ typedef enum
     SCPI_TP_EVT_CLEAR,         // device clear or USB re-open
 } ScpiTpEvt;
 
-// Lends msg to the SCPI thread until scpi_transport_resp_cb or, if a clear
-// comes meanwhile, scpi_transport_cleared_cb.
+// Lends msg to the SCPI thread until ScpiTpRespCb or, if a clear comes
+// meanwhile, ScpiTpClearedCb.
 void scpi_transport_req_set(
     const uint8_t* msg, size_t len, bool end, bool overrun
 );
@@ -54,16 +54,19 @@ void scpi_transport_evt_set(ScpiTpEvt evt);
 // Status byte last reported by the SCPI thread, for the host
 uint8_t scpi_transport_stb_get(void);
 
-// Called by the tud_task loop after every tud_task_ext: hands what the SCPI
-// thread published to the class callbacks below. Returns the time in ms to
-// wait for the next USB event before polling again: 1 while the class waits
-// for the SCPI thread, UINT32_MAX otherwise.
-uint32_t scpi_transport_poll(void);
-
-// Implemented by the USB class, called from scpi_transport_poll:
 // The lent message is consumed. resp stays valid until the class posts
 // SCPI_TP_EVT_RESP_DONE or SCPI_TP_EVT_CLEAR; len is 0 if there is no
 // response.
-void scpi_transport_resp_cb(const uint8_t* resp, size_t len);
+typedef void (*ScpiTpRespCb)(const uint8_t* resp, size_t len);
 // The clear is handled by the SCPI thread, the lent message is returned
-void scpi_transport_cleared_cb(void);
+typedef void (*ScpiTpClearedCb)(void);
+
+// Registers the class callbacks, call once from the class init before
+// scpi_transport_poll. Both are optional, a NULL one is skipped.
+void scpi_transport_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb);
+
+// Called by the tud_task loop after every tud_task_ext: hands what the SCPI
+// thread published to the registered class callbacks, in the calling thread.
+// Returns the time in ms to wait for the next USB event before polling again:
+// 1 while the class waits for the SCPI thread, UINT32_MAX otherwise.
+uint32_t scpi_transport_poll(void);

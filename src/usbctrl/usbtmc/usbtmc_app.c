@@ -45,11 +45,11 @@
 // USBTMC transport: frames messages and responses over TinyUSB and lends
 // messages to the SCPI thread through scpi_transport. All transport state is
 // changed in the TinyUSB thread only, the results of the SCPI thread come in
-// scpi_transport_resp_cb and scpi_transport_cleared_cb, called from
-// scpi_transport_poll.
+// resp_cb and cleared_cb, called from scpi_transport_poll.
 
 #include "scpi/transport_usbctl.h"
 #include "tusb.h"
+#include "usbctrl/usb_class.h"
 #include <string.h>
 
 #if (CFG_TUD_USBTMC_ENABLE_488)
@@ -105,7 +105,7 @@ typedef struct
 // Device clear (INITIATE_CLEAR or USB re-open), waits for the SCPI thread
 typedef struct
 {
-    bool pending;   // clear posted, scpi_transport_cleared_cb not yet
+    bool pending;   // clear posted, cleared_cb not yet
     bool complete;  // the last clear is complete, for CHECK_CLEAR_STATUS
 } TmcClear;
 
@@ -164,14 +164,15 @@ static void clear_start(void)
 }
 
 //--------------------------------------------------------------------+
-// transport_usbctl.h callbacks, called from scpi_transport_poll
+// transport_usbctl.h callbacks, registered in usb_class_init and called from
+// scpi_transport_poll
 //--------------------------------------------------------------------+
 
-void scpi_transport_resp_cb(const uint8_t* data, size_t len)
+static void resp_cb(const uint8_t* data, size_t len)
 {
     if (clear.pending) {
         // The message was parsed before the clear: the response is dropped,
-        // rx.buf is returned by scpi_transport_cleared_cb()
+        // rx.buf is returned by cleared_cb()
         return;
     }
     resp.data = data;
@@ -182,7 +183,7 @@ void scpi_transport_resp_cb(const uint8_t* data, size_t len)
     rx_arm();
 }
 
-void scpi_transport_cleared_cb(void)
+static void cleared_cb(void)
 {
     clear.pending  = false;
     clear.complete = true;
@@ -191,6 +192,11 @@ void scpi_transport_cleared_cb(void)
     // Arms bulk-OUT after a re-open. After INITIATE_CLEAR TinyUSB refuses
     // until the host clears the bulk-OUT halt.
     rx_arm();
+}
+
+void usbclass_init(void)
+{
+    scpi_transport_cb_set(resp_cb, cleared_cb);
 }
 
 //--------------------------------------------------------------------+

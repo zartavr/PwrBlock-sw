@@ -35,15 +35,16 @@
 // Event flags of the transport, internal to scpi/: the USB class posts them
 // through ScpiTpEvt (transport_usbctl.h)
 // Events returned by scpi_transport_evt_wait
-#define SCPI_TP_MSG       (1u << 0)  // a message is lent, see _req_get
-#define SCPI_TP_RESP_DONE (1u << 1)  // the response was sent or discarded
-#define SCPI_TP_INTERRUPTED                                                    \
-    (1u << 2)  // a message came before the response read
-#define SCPI_TP_UNTERMINATED (1u << 3)  // the host asked for a missing response
-#define SCPI_TP_CLEAR        (1u << 4)  // device clear or USB re-open
-#define SCPI_TP_ALL                                                            \
-    (SCPI_TP_MSG | SCPI_TP_RESP_DONE | SCPI_TP_INTERRUPTED |                   \
-     SCPI_TP_UNTERMINATED | SCPI_TP_CLEAR)
+enum
+{
+    SCPI_TP_MSG          = 1u << 0,  // a message is lent, see _req_get
+    SCPI_TP_RESP_DONE    = 1u << 1,  // the response was sent or discarded
+    SCPI_TP_INTERRUPTED  = 1u << 2,  // a message came before the response read
+    SCPI_TP_UNTERMINATED = 1u << 3,  // the host asked for a missing response
+    SCPI_TP_CLEAR        = 1u << 4,  // device clear or USB re-open
+    SCPI_TP_ALL          = SCPI_TP_MSG | SCPI_TP_RESP_DONE | SCPI_TP_INTERRUPTED
+                  | SCPI_TP_UNTERMINATED | SCPI_TP_CLEAR,
+};
 
 // Creates the RTOS objects, call before the scheduler starts
 void scpi_transport_init(void);

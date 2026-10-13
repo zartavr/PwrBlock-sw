@@ -40,7 +40,7 @@ typedef struct
 // thread. The poll also resets the flags once it has handled them; each flag
 // is set again only after that: a new publish needs a new lent message, a new
 // clear needs the class to finish the previous one in
-// scpi_transport_cleared_cb.
+// ScpiTpClearedCb.
 typedef struct
 {
     const uint8_t* volatile resp;
@@ -53,6 +53,8 @@ typedef struct
 static osEventFlagsId_t tp_evt;
 static TpTudState       tud;
 static TpScpiState      scpi;
+static ScpiTpRespCb     tp_resp_cb;
+static ScpiTpClearedCb  tp_cleared_cb;
 
 //--------------------------------------------------------------------+
 // SCPI thread
@@ -60,7 +62,9 @@ static TpScpiState      scpi;
 
 void scpi_transport_init(void)
 {
-    tp_evt = osEventFlagsNew(NULL);
+    tp_evt        = osEventFlagsNew(NULL);
+    tp_resp_cb    = NULL;
+    tp_cleared_cb = NULL;
 }
 
 uint32_t scpi_transport_evt_wait(void)
@@ -138,6 +142,12 @@ uint8_t scpi_transport_stb_get(void)
     return scpi.stb;
 }
 
+void scpi_transport_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)
+{
+    tp_resp_cb    = resp_cb;
+    tp_cleared_cb = cleared_cb;
+}
+
 uint32_t scpi_transport_poll(void)
 {
     // A publish pending together with a clear came first: the SCPI thread
@@ -147,14 +157,18 @@ uint32_t scpi_transport_poll(void)
     if (scpi.published) {
         scpi.published   = false;
         tud.wait_publish = false;
-        scpi_transport_resp_cb(scpi.resp, scpi.resp_len);
+        if (tp_resp_cb != NULL) {
+            tp_resp_cb(scpi.resp, scpi.resp_len);
+        }
     }
     if (scpi.clear_handled) {
         scpi.clear_handled = false;
         tud.wait_clear     = false;
         // A message lent before the clear is dropped, not published
         tud.wait_publish = false;
-        scpi_transport_cleared_cb();
+        if (tp_cleared_cb != NULL) {
+            tp_cleared_cb();
+        }
     }
 
     return (tud.wait_publish || tud.wait_clear) ? 1U : UINT32_MAX;

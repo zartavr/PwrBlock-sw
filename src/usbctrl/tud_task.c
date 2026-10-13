@@ -45,6 +45,7 @@
 #include <tusb.h>
 
 #include "scpi/transport_usbctl.h"
+#include "usbclass.h"
 
 void tud_app_task(void* argument)
 {
@@ -55,6 +56,7 @@ void tud_app_task(void* argument)
         .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO
     };
     tusb_init(BOARD_TUD_RHPORT, &dev_init);
+    usbclass_init();
 
     // Waits for USB events, and wakes up every 1 ms while the USB class waits
     // for the SCPI thread: its results are taken by the poll
