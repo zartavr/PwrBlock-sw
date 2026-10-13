@@ -42,14 +42,40 @@
  * THE SOFTWARE.
  */
 
+#include <cmsis_os2.h>
 #include <tusb.h>
 
 #include "scpi/scpi_app_tp.h"
 #include "usbclass.h"
 
+// The thread sleeps until a USB event is queued or the SCPI thread leaves a
+// result. Thread flags stay set until the wait, so a wake that comes while the
+// loop runs is not lost: at most the loop runs once more for nothing.
+#define TUD_WAKE (1u << 0)
+
+static osThreadId_t tud_thread;
+
+static void tud_wake(void)
+{
+    osThreadFlagsSet(tud_thread, TUD_WAKE);
+}
+
+// A USB event is queued for tud_task_ext, called from the USB interrupt too
+void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr)
+{
+    (void)rhport;
+    (void)eventid;
+    (void)in_isr;
+    tud_wake();
+}
+
 void tud_app_task(void* argument)
 {
     (void)argument;
+
+    // Set before the stack starts and with it the hook
+    tud_thread = osThreadGetId();
+    scpi_tp_wake_set(tud_wake);
 
     // init device stack on configured roothub port
     tusb_rhport_init_t dev_init = {
@@ -58,12 +84,11 @@ void tud_app_task(void* argument)
     tusb_init(BOARD_TUD_RHPORT, &dev_init);
     usbclass_init();
 
-    // Waits for USB events, and wakes up every 1 ms while the USB class waits
-    // for the SCPI thread: its results are taken by the poll
-    uint32_t timeout_ms = UINT32_MAX;
     while (true) {
+        osThreadFlagsWait(TUD_WAKE, osFlagsWaitAny, osWaitForever);
         // TinyUSB device task, calls usb class specific callbacks tud_*_cb
-        tud_task_ext(timeout_ms, false);
-        timeout_ms = scpi_tp_poll();
+        // until the event queue is empty
+        tud_task_ext(0, false);
+        scpi_tp_dispatch();
     }
 }

@@ -45,7 +45,7 @@
 // CDC transport: lends received chunks to the SCPI thread through
 // scpi_tp and writes responses to the CDC TX FIFO as it frees up. All
 // transport state is changed in the TinyUSB thread only, the responses come
-// in resp_cb, called from scpi_tp_poll.
+// in resp_cb, called from scpi_tp_dispatch.
 
 #include "scpi/scpi_app_tp.h"
 #include "tusb.h"
@@ -121,7 +121,7 @@ static void tx_continue(void)
 
 //--------------------------------------------------------------------+
 // scpi_app_tp.h callbacks, registered in usb_class_init and called from
-// scpi_tp_poll
+// scpi_tp_dispatch
 //--------------------------------------------------------------------+
 
 static void resp_cb(const uint8_t* data, size_t len)

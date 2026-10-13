@@ -29,17 +29,12 @@ typedef struct
     size_t         msg_len;
     bool           msg_end;
     bool           msg_overrun;
-
-    // What the class waits for from the SCPI thread: scpi_tp_poll
-    // runs every 1 ms while one of them is set
-    bool wait_publish;
-    bool wait_clear;
 } TpTudState;
 
-// Written by the SCPI thread, read by scpi_tp_poll in the TinyUSB
-// thread. The poll also resets the flags once it has handled them; each flag
-// is set again only after that: a new publish needs a new lent message, a new
-// clear needs the class to finish the previous one in
+// Written by the SCPI thread, which then wakes the TinyUSB thread, read by
+// scpi_tp_dispatch there. The dispatch also resets the flags once it has
+// handled them; each flag is set again only after that: a new publish needs a
+// new lent message, a new clear needs the class to finish the previous one in
 // ScpiTpClearedCb.
 typedef struct
 {
@@ -55,10 +50,19 @@ static TpTudState       tud;
 static TpScpiState      scpi;
 static ScpiTpRespCb     tp_resp_cb;
 static ScpiTpClearedCb  tp_cleared_cb;
+static ScpiTpWakeFn     tp_wake;
 
 //--------------------------------------------------------------------+
 // SCPI thread
 //--------------------------------------------------------------------+
+
+// Called after the state for scpi_tp_dispatch is written
+static void tud_wake(void)
+{
+    if (tp_wake != NULL) {
+        tp_wake();
+    }
+}
 
 void scpi_app_init(void)
 {
@@ -90,11 +94,13 @@ void scpi_app_resp_set(const uint8_t* resp, size_t len)
     scpi.resp      = resp;
     scpi.resp_len  = len;
     scpi.published = true;
+    tud_wake();
 }
 
 void scpi_app_clear_done(void)
 {
     scpi.clear_handled = true;
+    tud_wake();
 }
 
 void scpi_app_status_set(uint16_t status)
@@ -110,11 +116,10 @@ void scpi_tp_req_set(
     const uint8_t* msg, size_t len, bool end, bool overrun
 )
 {
-    tud.msg          = msg;
-    tud.msg_len      = len;
-    tud.msg_end      = end;
-    tud.msg_overrun  = overrun;
-    tud.wait_publish = true;
+    tud.msg         = msg;
+    tud.msg_len     = len;
+    tud.msg_end     = end;
+    tud.msg_overrun = overrun;
     osEventFlagsSet(tp_evt, SCPI_TP_MSG);
 }
 
@@ -131,7 +136,6 @@ void scpi_tp_evt_set(ScpiTpEvt evt)
             osEventFlagsSet(tp_evt, SCPI_TP_UNTERMINATED);
             break;
         case SCPI_TP_EVT_CLEAR:
-            tud.wait_clear = true;
             osEventFlagsSet(tp_evt, SCPI_TP_CLEAR);
             break;
     }
@@ -148,28 +152,31 @@ void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb)
     tp_cleared_cb = cleared_cb;
 }
 
-uint32_t scpi_tp_poll(void)
+void scpi_tp_wake_set(ScpiTpWakeFn wake)
+{
+    tp_wake = wake;
+}
+
+void scpi_tp_dispatch(void)
 {
     // A publish pending together with a clear came first: the SCPI thread
     // publishes the message lent before the clear, then handles the clear.
     // In the other order the class would take a response from before the
-    // clear.
-    if (scpi.published) {
-        scpi.published   = false;
-        tud.wait_publish = false;
+    // clear. Read in the reverse order of the writes, so a clear seen here
+    // brings the publish before it along.
+    bool cleared   = scpi.clear_handled;
+    bool published = scpi.published;
+
+    if (published) {
+        scpi.published = false;
         if (tp_resp_cb != NULL) {
             tp_resp_cb(scpi.resp, scpi.resp_len);
         }
     }
-    if (scpi.clear_handled) {
+    if (cleared) {
         scpi.clear_handled = false;
-        tud.wait_clear     = false;
-        // A message lent before the clear is dropped, not published
-        tud.wait_publish = false;
         if (tp_cleared_cb != NULL) {
             tp_cleared_cb();
         }
     }
-
-    return (tud.wait_publish || tud.wait_clear) ? 1U : UINT32_MAX;
 }

@@ -21,8 +21,9 @@
 //
 // In:  the class lends a message and posts events, the SCPI thread waits on
 //      them (event flags).
-// Out: the SCPI thread only sets flags, scpi_tp_poll in the tud_task
-//      loop picks them up and calls the class callbacks in the TinyUSB thread.
+// Out: the SCPI thread only sets flags and wakes the TinyUSB thread,
+//      scpi_tp_dispatch in the tud_task loop picks them up and calls the
+//      class callbacks there.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
 // thread never calls TinyUSB.
@@ -64,11 +65,15 @@ typedef void (*ScpiTpRespCb)(const uint8_t* resp, size_t len);
 typedef void (*ScpiTpClearedCb)(void);
 
 // Registers the class callbacks, call once from the class init before
-// scpi_tp_poll. Both are optional, a NULL one is skipped.
+// scpi_tp_dispatch. Both are optional, a NULL one is skipped.
 void scpi_tp_cb_set(ScpiTpRespCb resp_cb, ScpiTpClearedCb cleared_cb);
 
-// Called by the tud_task loop after every tud_task_ext: hands what the SCPI
-// thread published to the registered class callbacks, in the calling thread.
-// Returns the time in ms to wait for the next USB event before polling again:
-// 1 while the class waits for the SCPI thread, UINT32_MAX otherwise.
-uint32_t scpi_tp_poll(void);
+// Wakes the thread that runs scpi_tp_dispatch, called from the SCPI thread
+// each time it leaves something for the dispatch
+typedef void (*ScpiTpWakeFn)(void);
+// Registers the wake, call once before the USB stack starts
+void scpi_tp_wake_set(ScpiTpWakeFn wake);
+
+// Called by the tud_task loop after every wake: hands what the SCPI thread
+// published to the registered class callbacks, in the calling thread
+void scpi_tp_dispatch(void);

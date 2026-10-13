@@ -21,8 +21,9 @@
 //
 // In:  the class lends a message and posts events, the SCPI thread waits on
 //      them (event flags).
-// Out: the SCPI thread only sets flags, scpi_tp_poll in the tud_task
-//      loop picks them up and calls the class callbacks in the TinyUSB thread.
+// Out: the SCPI thread only sets flags and wakes the TinyUSB thread,
+//      scpi_tp_dispatch in the tud_task loop picks them up and calls the
+//      class callbacks there.
 //
 // So the class owns all transport state in the TinyUSB thread and the SCPI
 // thread never calls TinyUSB.
