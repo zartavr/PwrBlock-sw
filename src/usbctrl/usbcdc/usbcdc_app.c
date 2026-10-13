@@ -45,9 +45,9 @@
 // CDC transport: lends received chunks to the SCPI thread through
 // scpi_transport and writes responses to the CDC TX FIFO as it frees up. All
 // transport state is changed in the TinyUSB thread only, the responses come
-// in scpi_transport_published_cb, called from scpi_transport_poll.
+// in scpi_transport_resp_cb, called from scpi_transport_poll.
 
-#include "scpi/scpi_transport.h"
+#include "scpi/transport_usbctl.h"
 #include "tusb.h"
 
 // Chunk read from the CDC RX FIFO, lent to the SCPI thread until it publishes
@@ -59,7 +59,7 @@ typedef struct
     bool    lent;
     // The port was opened or closed while the chunk was lent: its response
     // belongs to the old session and is dropped
-    bool    stale;
+    bool stale;
 } CdcRx;
 
 // Response published by the SCPI thread, written to the TX FIFO from sent
@@ -89,7 +89,7 @@ static void rx_lend_next(void)
     uint32_t len = tud_cdc_read(rx.buf, sizeof(rx.buf));
     if (len > 0) {
         rx.lent = true;
-        scpi_transport_lend(rx.buf, len, false, false);
+        scpi_transport_req_set(rx.buf, len, false, false);
     }
 }
 
@@ -98,7 +98,7 @@ static void resp_finish(void)
 {
     resp.len  = 0;
     resp.sent = 0;
-    scpi_transport_post(SCPI_TP_RESP_DONE);
+    scpi_transport_evt_set(SCPI_TP_EVT_RESP_DONE);
     rx_lend_next();
 }
 
@@ -119,10 +119,10 @@ static void tx_continue(void)
 }
 
 //--------------------------------------------------------------------+
-// scpi_transport.h callbacks, called from scpi_transport_poll
+// transport_usbctl.h callbacks, called from scpi_transport_poll
 //--------------------------------------------------------------------+
 
-void scpi_transport_published_cb(const uint8_t* data, size_t len)
+void scpi_transport_resp_cb(const uint8_t* data, size_t len)
 {
     bool stale = rx.stale;
 
@@ -145,7 +145,7 @@ void scpi_transport_published_cb(const uint8_t* data, size_t len)
 
 void scpi_transport_cleared_cb(void)
 {
-    // CDC never posts SCPI_TP_CLEAR
+    // CDC never posts SCPI_TP_EVT_CLEAR
 }
 
 //--------------------------------------------------------------------+

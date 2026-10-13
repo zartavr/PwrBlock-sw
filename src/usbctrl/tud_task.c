@@ -44,7 +44,7 @@
 
 #include <tusb.h>
 
-#include "scpi/scpi_transport.h"
+#include "scpi/transport_usbctl.h"
 
 void tud_app_task(void* argument)
 {

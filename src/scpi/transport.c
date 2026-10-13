@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#include "scpi_transport.h"
+#include "transport_scpi.h"
+#include "transport_usbctl.h"
 
 #include <cmsis_os2.h>
 
@@ -43,10 +44,10 @@ typedef struct
 typedef struct
 {
     const uint8_t* volatile resp;
-    volatile size_t         resp_len;
-    volatile bool           published;      // resp / resp_len are set
-    volatile bool           clear_handled;  // SCPI_TP_CLEAR is handled
-    volatile uint8_t        stb;            // status byte for the host
+    volatile size_t  resp_len;
+    volatile bool    published;      // resp / resp_len are set
+    volatile bool    clear_handled;  // SCPI_TP_CLEAR is handled
+    volatile uint8_t stb;            // status byte for the host
 } TpScpiState;
 
 static osEventFlagsId_t tp_evt;
@@ -62,7 +63,7 @@ void scpi_transport_init(void)
     tp_evt = osEventFlagsNew(NULL);
 }
 
-uint32_t scpi_transport_wait(void)
+uint32_t scpi_transport_evt_wait(void)
 {
     uint32_t evt =
         osEventFlagsWait(tp_evt, SCPI_TP_ALL, osFlagsWaitAny, osWaitForever);
@@ -72,7 +73,7 @@ uint32_t scpi_transport_wait(void)
     return evt;
 }
 
-size_t scpi_transport_msg(const uint8_t** data, bool* end, bool* overrun)
+size_t scpi_transport_req_get(const uint8_t** data, bool* end, bool* overrun)
 {
     *data    = tud.msg;
     *end     = tud.msg_end;
@@ -80,7 +81,7 @@ size_t scpi_transport_msg(const uint8_t** data, bool* end, bool* overrun)
     return tud.msg_len;
 }
 
-void scpi_transport_publish(const uint8_t* resp, size_t len)
+void scpi_transport_resp_set(const uint8_t* resp, size_t len)
 {
     scpi.resp      = resp;
     scpi.resp_len  = len;
@@ -92,7 +93,7 @@ void scpi_transport_clear_done(void)
     scpi.clear_handled = true;
 }
 
-void scpi_transport_stb(uint8_t stb)
+void scpi_transport_stb_set(uint8_t stb)
 {
     scpi.stb = stb;
 }
@@ -101,7 +102,9 @@ void scpi_transport_stb(uint8_t stb)
 // USB class, TinyUSB thread
 //--------------------------------------------------------------------+
 
-void scpi_transport_lend(const uint8_t* msg, size_t len, bool end, bool overrun)
+void scpi_transport_req_set(
+    const uint8_t* msg, size_t len, bool end, bool overrun
+)
 {
     tud.msg          = msg;
     tud.msg_len      = len;
@@ -111,15 +114,26 @@ void scpi_transport_lend(const uint8_t* msg, size_t len, bool end, bool overrun)
     osEventFlagsSet(tp_evt, SCPI_TP_MSG);
 }
 
-void scpi_transport_post(uint32_t evt)
+void scpi_transport_evt_set(ScpiTpEvt evt)
 {
-    if (evt & SCPI_TP_CLEAR) {
-        tud.wait_clear = true;
+    switch (evt) {
+        case SCPI_TP_EVT_RESP_DONE:
+            osEventFlagsSet(tp_evt, SCPI_TP_RESP_DONE);
+            break;
+        case SCPI_TP_EVT_INTERRUPTED:
+            osEventFlagsSet(tp_evt, SCPI_TP_INTERRUPTED);
+            break;
+        case SCPI_TP_EVT_UNTERMINATED:
+            osEventFlagsSet(tp_evt, SCPI_TP_UNTERMINATED);
+            break;
+        case SCPI_TP_EVT_CLEAR:
+            tud.wait_clear = true;
+            osEventFlagsSet(tp_evt, SCPI_TP_CLEAR);
+            break;
     }
-    osEventFlagsSet(tp_evt, evt);
 }
 
-uint8_t scpi_transport_host_stb(void)
+uint8_t scpi_transport_stb_get(void)
 {
     return scpi.stb;
 }
@@ -133,7 +147,7 @@ uint32_t scpi_transport_poll(void)
     if (scpi.published) {
         scpi.published   = false;
         tud.wait_publish = false;
-        scpi_transport_published_cb(scpi.resp, scpi.resp_len);
+        scpi_transport_resp_cb(scpi.resp, scpi.resp_len);
     }
     if (scpi.clear_handled) {
         scpi.clear_handled = false;

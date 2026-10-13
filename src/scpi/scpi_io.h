@@ -42,7 +42,7 @@ void scpi_io_input_overrun(void);
 // empty. The data stays valid until scpi_io_response_drop or the next input.
 size_t scpi_io_response(const uint8_t** data);
 // The response is sent or discarded: clears it and MAV
-void   scpi_io_response_drop(void);
+void scpi_io_response_drop(void);
 
 // IEEE 488.2 device clear: drops the input and the response, keeps the status
 // registers and the error queue
