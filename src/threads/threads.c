@@ -21,8 +21,8 @@
 #include "indication/indication_task.h"
 #include "monitor/monitor_task.h"
 #include "regulator/regulator_task.h"
-#include "sys_status/sys_status_task.h"
 #include "scpi/scpi_task.h"
+#include "sys_status/sys_status_task.h"
 #include "usbctrl/tud_task.h"
 #include "usbpd/usbpd_task.h"
 
@@ -137,6 +137,7 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char* pcTaskName)
     (void)pcTaskName;
 
     taskDISABLE_INTERRUPTS();
+    for (;;) {};
 }
 
 void vApplicationTickHook(void)
