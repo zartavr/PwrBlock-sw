@@ -17,7 +17,6 @@
 #include "usbctl.h"
 
 #include <cmsis_os2.h>
-#include <device/dcd.h>
 #include <stdbool.h>
 #include <tusb.h>
 
@@ -25,7 +24,6 @@
 #include "main.h"
 #include "middleware/adc_mgr/adc_mgr.h"
 
-// PC VBUS detection thresholds with hysteresis in Volts
 #define USBCTL_VBUS_ON_V  (4.0F)
 #define USBCTL_VBUS_OFF_V (3.5F)
 
