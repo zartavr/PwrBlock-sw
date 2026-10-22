@@ -19,3 +19,7 @@
 // VBUS_PWR voltage divider resistors in Ohms
 #define VBUS_RA 100000U
 #define VBUS_RB 10000U
+
+// VBUS_PC voltage divider resistors in Ohms
+#define VBUS_PC_RA 100000U
+#define VBUS_PC_RB 100000U
