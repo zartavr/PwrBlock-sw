@@ -9,6 +9,7 @@ This project uses semantic versioning with tags like `v0.1.0`. See
 
 ### Added
 
+- Enable watchdog with 4 second timeout, feed on IDLE thread.
 - USB host port selection: PLD by default, PC when PC VBUS is present.
 
 ## v0.1.0
