@@ -413,7 +413,10 @@ static void MX_IWDG_Init(void)
         Error_Handler();
     }
     /* USER CODE BEGIN IWDG_Init 2 */
-
+#ifdef DEBUG
+    __HAL_RCC_DBGMCU_CLK_ENABLE();
+    __HAL_DBGMCU_FREEZE_IWDG();
+#endif
     /* USER CODE END IWDG_Init 2 */
 }
 
