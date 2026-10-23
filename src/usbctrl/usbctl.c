@@ -20,57 +20,56 @@
 #include <stdbool.h>
 #include <tusb.h>
 
-#include "config/vbus_conf.h"
 #include "main.h"
-#include "middleware/adc_mgr/adc_mgr.h"
+#include "sys_status/sys_status.h"
 
-#define USBCTL_VBUS_ON_V  (4.0F)
-#define USBCTL_VBUS_OFF_V (3.5F)
-
-#define USBCTL_VBUS_PC_K ((float)(VBUS_PC_RA + VBUS_PC_RB) / (float)VBUS_PC_RB)
+#define USBCTL_PORT_SWITCH_PERIOD_MS 1000
 
 typedef struct
 {
     UsbctlPort port;
-    bool       pc_vbus;
-    uint32_t   poll_tick;
+    bool       selected;
+    uint32_t   select_tick;
 } UsbctlHandle;
 
 static UsbctlHandle usbctl;
 
 // Private function prototypes
 static void mux_set(UsbctlPort port);
-static bool pc_vbus_present(bool prev);
 
 void usbctl_init(void)
 {
-    usbctl.pc_vbus   = pc_vbus_present(false);
-    usbctl.poll_tick = osKernelGetTickCount();
-
-    mux_set(usbctl.pc_vbus ? USBCTL_PORT_PC : USBCTL_PORT_PLD);
+    usbctl_reset();
 }
 
-void usbctl_task_iter(uint32_t period_ms)
+void usbctl_reset(void)
 {
+    usbctl.selected    = false;
+    usbctl.select_tick = osKernelGetTickCount();
+    usbctl.port        = USBCTL_PORT_PC;
+    mux_set(usbctl.port);
+}
+
+void usbctl_task_iter(void)
+{
+
+    if (usbctl.selected) {
+        return;
+    }
+
+    if (tud_connected()) {
+        usbctl.selected = true;
+        return;
+    }
+
     uint32_t now = osKernelGetTickCount();
-
-    if ((now - usbctl.poll_tick) < period_ms) {
+    if ((now - usbctl.select_tick) < USBCTL_PORT_SWITCH_PERIOD_MS) {
         return;
     }
-    usbctl.poll_tick = now;
 
-    bool pc_vbus = pc_vbus_present(usbctl.pc_vbus);
-
-    if (pc_vbus == usbctl.pc_vbus) {
-        return;
-    }
-    usbctl.pc_vbus = pc_vbus;
-
-    UsbctlPort port = pc_vbus ? USBCTL_PORT_PC : USBCTL_PORT_PLD;
-
-    if (port != usbctl.port) {
-        mux_set(port);
-    }
+    usbctl.port        = (usbctl.port + 1) % USBCTL_PORT_COUNT;
+    usbctl.select_tick = now;
+    mux_set(usbctl.port);
 }
 
 UsbctlPort usbctl_port_get(void)
@@ -83,16 +82,9 @@ static void mux_set(UsbctlPort port)
     // Mux code SW1,SW2: 01 - PLD, 11 - PC
     GPIO_PinState sw1 =
         (port == USBCTL_PORT_PC) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+    GPIO_PinState sw2 =
+        (port != USBCTL_PORT_PWR) ? GPIO_PIN_SET : GPIO_PIN_RESET;
 
     HAL_GPIO_WritePin(USB_SW1_GPIO_Port, USB_SW1_Pin, sw1);
-    HAL_GPIO_WritePin(USB_SW2_GPIO_Port, USB_SW2_Pin, GPIO_PIN_SET);
-
-    usbctl.port = port;
-}
-
-static bool pc_vbus_present(bool prev)
-{
-    float vbus = adc_manager_read(ADC_MNG_CH_VUSB_PC_ADC) * USBCTL_VBUS_PC_K;
-
-    return vbus >= (prev ? USBCTL_VBUS_OFF_V : USBCTL_VBUS_ON_V);
+    HAL_GPIO_WritePin(USB_SW2_GPIO_Port, USB_SW2_Pin, sw2);
 }

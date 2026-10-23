@@ -16,27 +16,31 @@
 
 #pragma once
 
-#include <stdint.h>
-
 typedef enum
 {
-    USBCTL_PORT_PLD = 0,
-    USBCTL_PORT_PC,
+    USBCTL_PORT_PC = 0,
+    USBCTL_PORT_IDC,
+    USBCTL_PORT_PWR,
+
+    USBCTL_PORT_COUNT,
 } UsbctlPort;
 
 /**
  * @brief Select initial USB host port. Must be called before tusb_init().
- *
- * PLD is selected by default, PC if its VBUS is already present.
  */
 void usbctl_init(void);
 
 /**
- * @brief Poll PC VBUS and switch USB DATA lines between PLD and PC ports.
+ * @brief Select initial USB host port. Must be called before tusb_init().
+ */
+void usbctl_reset(void);
+
+/**
+ * @brief Switch USB DATA lines between USB ports.
  *
  * Must be called from the TinyUSB device task context.
  */
-void usbctl_task_iter(uint32_t period_ms);
+void usbctl_task_iter(void);
 
 /**
  * @brief Get currently selected USB host port.

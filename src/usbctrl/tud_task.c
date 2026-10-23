@@ -54,7 +54,6 @@
 #include "usbcdc/usbcdc_app.h"
 #endif
 
-// Period of PC VBUS polling in milliseconds
 #define USBCTL_POLL_MS (100U)
 
 void tud_app_task(void* argument)
@@ -71,7 +70,7 @@ void tud_app_task(void* argument)
 
     while (true) {
         tud_task_ext(USBCTL_POLL_MS, false);
-        usbctl_task_iter(USBCTL_POLL_MS);
+        usbctl_task_iter();
     }
 }
 
