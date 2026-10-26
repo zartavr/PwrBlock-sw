@@ -140,8 +140,6 @@ int main(void)
 
     // MCU periph init done
     led_set(LED_USR, LED_COLOR_RED);
-    HAL_Delay(100);
-    led_set(LED_USR, LED_COLOR_OFF);
 
     app();
     /* USER CODE END 2 */
