@@ -24,6 +24,7 @@
 #include <usbpd_dpm_core.h>
 
 #include "app.h"
+#include "bsp/drivers/led/led.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -131,9 +132,16 @@ int main(void)
     MX_USART5_UART_Init();
     MX_IWDG_Init();
     /* USER CODE BEGIN 2 */
+    led_init();
 
     // Enable DAC_CH1
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+
+
+    // MCU periph init done
+    led_set(LED_USR, LED_COLOR_RED);
+    HAL_Delay(100);
+    led_set(LED_USR, LED_COLOR_OFF);
 
     app();
     /* USER CODE END 2 */
