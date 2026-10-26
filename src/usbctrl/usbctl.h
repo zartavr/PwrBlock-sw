@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 typedef enum
 {
     USBCTL_PORT_PC = 0,
@@ -31,14 +33,16 @@ typedef enum
 void usbctl_init(void);
 
 /**
- * @brief Select initial USB host port. Must be called before tusb_init().
+ * @brief Reset USB host port selection to initial state.
  */
 void usbctl_reset(void);
 
 /**
  * @brief Switch USB DATA lines between USB ports.
  *
- * Must be called from the TinyUSB device task context.
+ * The selection process occurs once after the component is initialized.
+ * When the selected port is disabled,
+ * no search for another active port is performed.
  */
 void usbctl_task_iter(void);
 
@@ -48,3 +52,10 @@ void usbctl_task_iter(void);
  * @return UsbctlPort Selected port.
  */
 UsbctlPort usbctl_port_get(void);
+
+/**
+ * @brief Get status of USB port selection.
+ *
+ * @return bool - True if port selected, False otherwise.
+ */
+bool usbctl_is_selected(void);

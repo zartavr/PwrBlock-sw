@@ -52,13 +52,13 @@ void usbctl_reset(void)
 
 void usbctl_task_iter(void)
 {
-
     if (usbctl.selected) {
         return;
     }
 
     if (tud_connected()) {
         usbctl.selected = true;
+        sys_status_set(SYS_STATUS_SRC_USBCTRL, SYS_STATUS_BUSY);
         return;
     }
 
@@ -79,7 +79,7 @@ UsbctlPort usbctl_port_get(void)
 
 static void mux_set(UsbctlPort port)
 {
-    // Mux code SW1,SW2: 01 - PLD, 11 - PC
+    // Mux code SW1,SW2: 01 - PLD, 11 - PC, 00, 10 - PWR
     GPIO_PinState sw1 =
         (port == USBCTL_PORT_PC) ? GPIO_PIN_SET : GPIO_PIN_RESET;
     GPIO_PinState sw2 =
