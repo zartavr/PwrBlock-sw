@@ -106,6 +106,8 @@ void Error_Handler(void);
 #define UCPD1_CC1_GPIO_Port      GPIOA
 #define I2C1_SCL_Pin             GPIO_PIN_9
 #define I2C1_SCL_GPIO_Port       GPIOA
+#define USBHUB_NRST_Pin          GPIO_PIN_6
+#define USBHUB_NRST_GPIO_Port    GPIOC
 #define TPS_PG_Pin               GPIO_PIN_7
 #define TPS_PG_GPIO_Port         GPIOC
 #define I2C1_SDA_Pin             GPIO_PIN_10
