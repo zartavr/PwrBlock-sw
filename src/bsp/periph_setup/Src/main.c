@@ -740,17 +740,11 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Alternate = GPIO_AF4_USART3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : BUTTON_Pin */
-    GPIO_InitStruct.Pin  = BUTTON_Pin;
+    /*Configure GPIO pins : BUTTON_Pin INA_ALERT_Pin */
+    GPIO_InitStruct.Pin  = BUTTON_Pin | INA_ALERT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(BUTTON_GPIO_Port, &GPIO_InitStruct);
-
-    /*Configure GPIO pin : INA_ALERT_Pin */
-    GPIO_InitStruct.Pin  = INA_ALERT_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(INA_ALERT_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /*Configure GPIO pin : LM_EN_Pin */
     GPIO_InitStruct.Pin   = LM_EN_Pin;
