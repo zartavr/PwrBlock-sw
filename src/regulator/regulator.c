@@ -396,6 +396,13 @@ osStatus_t regulator_drv_ilim_set(uint32_t current_ma)
     lm_drv.i_calib_ma =
         constrain_f(i_calib_f, LM51772_CURRENT_MIN_MA, LM51772_CURRENT_MAX_MA);
 
+    if (lm_drv.i_calib_ma <= 300) {
+        converter_sensor_set_resolution(true);
+    }
+    else {
+        converter_sensor_set_resolution(false);
+    }
+
     if (lm_drv.is_ext_curr_lim_en == false) {
         buf = (uint8_t)(lm_drv.i_calib_ma / LM51772_CURRENT_LIM_STEP_MA);
 

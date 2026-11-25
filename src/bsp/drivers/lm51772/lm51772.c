@@ -60,7 +60,16 @@ void output_en_mcu_set(bool enabled)
         HAL_GPIO_WritePin(OUT_EN_MCU_GPIO_Port, OUT_EN_MCU_Pin, GPIO_PIN_SET);
     }
     else {
-
         HAL_GPIO_WritePin(OUT_EN_MCU_GPIO_Port, OUT_EN_MCU_Pin, GPIO_PIN_RESET);
+    }
+}
+
+void converter_sensor_set_resolution(bool high)
+{
+    if (high) {
+        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_SET);
+    }
+    else {
+        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_RESET);
     }
 }
