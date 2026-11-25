@@ -16,6 +16,7 @@
 
 #include "lm51772.h"
 #include "lm51772_conf.h"
+#include "main.h"
 
 #include <stm32g0xx_hal.h>
 
@@ -45,10 +46,21 @@ bool lm51772_write(void* bus_handler, uint8_t reg_addr, uint8_t* tx_buff)
 
 void lm51772_on(void)
 {
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LM_EN_GPIO_Port, LM_EN_Pin, GPIO_PIN_SET);
 }
 
 void lm51772_off(void)
 {
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LM_EN_GPIO_Port, LM_EN_Pin, GPIO_PIN_RESET);
+}
+
+void output_en_mcu_set(bool enabled)
+{
+    if (enabled) {
+        HAL_GPIO_WritePin(OUT_EN_MCU_GPIO_Port, OUT_EN_MCU_Pin, GPIO_PIN_SET);
+    }
+    else {
+
+        HAL_GPIO_WritePin(OUT_EN_MCU_GPIO_Port, OUT_EN_MCU_Pin, GPIO_PIN_RESET);
+    }
 }

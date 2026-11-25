@@ -284,6 +284,8 @@ osStatus_t regulator_drv_output_set(bool is_enabled)
         lm_drv.is_hiv_mode = true;
     }
 
+    output_en_mcu_set(is_enabled);
+
     // Release driver mutex
     osMutexRelease(lm_drv.mutex);
     return status;

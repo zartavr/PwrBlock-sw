@@ -54,3 +54,5 @@ void lm51772_on(void);
  *
  */
 void lm51772_off(void);
+
+void output_en_mcu_set(bool enabled);
