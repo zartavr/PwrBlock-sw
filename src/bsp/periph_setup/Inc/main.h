@@ -70,6 +70,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SNS_SW_Pin               GPIO_PIN_13
+#define SNS_SW_GPIO_Port         GPIOC
 #define VUSB_PWR_ADC_Pin         GPIO_PIN_0
 #define VUSB_PWR_ADC_GPIO_Port   GPIOA
 #define VUSB_PC_ADC_Pin          GPIO_PIN_1
@@ -91,19 +93,21 @@ void Error_Handler(void);
 #define BUTTON_EXTI_IRQn         EXTI0_1_IRQn
 #define USART_TRACE_TX_Pin       GPIO_PIN_2
 #define USART_TRACE_TX_GPIO_Port GPIOB
-#define TPS_PG_Pin               GPIO_PIN_11
-#define TPS_PG_GPIO_Port         GPIOB
 #define INA_ALERT_Pin            GPIO_PIN_12
 #define INA_ALERT_GPIO_Port      GPIOB
 #define INA_ALERT_EXTI_IRQn      EXTI4_15_IRQn
 #define LM_EN_Pin                GPIO_PIN_13
 #define LM_EN_GPIO_Port          GPIOB
+#define OUT_EN_MCU_Pin           GPIO_PIN_14
+#define OUT_EN_MCU_GPIO_Port     GPIOB
 #define UCPD1_CC2_Pin            GPIO_PIN_15
 #define UCPD1_CC2_GPIO_Port      GPIOB
 #define UCPD1_CC1_Pin            GPIO_PIN_8
 #define UCPD1_CC1_GPIO_Port      GPIOA
 #define I2C1_SCL_Pin             GPIO_PIN_9
 #define I2C1_SCL_GPIO_Port       GPIOA
+#define TPS_PG_Pin               GPIO_PIN_7
+#define TPS_PG_GPIO_Port         GPIOC
 #define I2C1_SDA_Pin             GPIO_PIN_10
 #define I2C1_SDA_GPIO_Port       GPIOA
 #define USBFS_DM_Pin             GPIO_PIN_11
