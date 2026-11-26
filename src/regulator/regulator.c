@@ -39,6 +39,7 @@ typedef struct
     bool        is_hiv_mode;
     bool        is_drv1_en;
     bool        is_ext_curr_lim_en;
+    float_t     sns_shunt_r;
     osMutexId_t mutex;
 
     CalibConst_t calib_const;
@@ -80,6 +81,7 @@ osStatus_t regulator_drv_reset(void)
     lm_drv.is_drv1_en         = false;
     lm_drv.is_ext_curr_lim_en = false;
     lm_drv.mode               = REGULATOR_DRV_OUT_MODE_OFF;
+    lm_drv.sns_shunt_r        = LM51772_EXT_ILIM_SENS_SHUNT_3A_R;
 
     // Init storage of calibration consts
     // (calib_const_init falls back to neutral coeffs on failure)
@@ -284,7 +286,7 @@ osStatus_t regulator_drv_output_set(bool is_enabled)
         lm_drv.is_hiv_mode = true;
     }
 
-    output_en_mcu_set(is_enabled);
+    lm51772_output_set(is_enabled);
 
     // Release driver mutex
     osMutexRelease(lm_drv.mutex);
@@ -397,10 +399,12 @@ osStatus_t regulator_drv_ilim_set(uint32_t current_ma)
         constrain_f(i_calib_f, LM51772_CURRENT_MIN_MA, LM51772_CURRENT_MAX_MA);
 
     if (lm_drv.i_calib_ma <= 300) {
-        converter_sensor_set_resolution(true);
+        lm51772_sns_resolution_set(true);
+        lm_drv.sns_shunt_r = LM51772_EXT_ILIM_SENS_SHUNT_0A3_R;
     }
     else {
-        converter_sensor_set_resolution(false);
+        lm51772_sns_resolution_set(false);
+        lm_drv.sns_shunt_r = LM51772_EXT_ILIM_SENS_SHUNT_3A_R;
     }
 
     if (lm_drv.is_ext_curr_lim_en == false) {
@@ -411,8 +415,8 @@ osStatus_t regulator_drv_ilim_set(uint32_t current_ma)
         }
     }
     else {
-        float dac_vout =
-            LM51772_EXT_ILIM_RATIO_COEFF * (float)lm_drv.i_calib_ma / 1000.0F;
+        float dac_vout = lm_drv.sns_shunt_r * LM51772_EXT_ILIM_RATIO_COEFF *
+                         (float)lm_drv.i_calib_ma / 1000.0F;
         dac_write(dac_vout);
         status = osOK;
     }

@@ -54,7 +54,7 @@ void lm51772_off(void)
     HAL_GPIO_WritePin(LM_EN_GPIO_Port, LM_EN_Pin, GPIO_PIN_RESET);
 }
 
-void output_en_mcu_set(bool enabled)
+void lm51772_output_set(bool enabled)
 {
     if (enabled) {
         HAL_GPIO_WritePin(OUT_EN_MCU_GPIO_Port, OUT_EN_MCU_Pin, GPIO_PIN_SET);
@@ -64,12 +64,12 @@ void output_en_mcu_set(bool enabled)
     }
 }
 
-void converter_sensor_set_resolution(bool high)
+void lm51772_sns_resolution_set(bool high)
 {
     if (high) {
-        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_RESET);
     }
     else {
-        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(SNS_SW_GPIO_Port, SNS_SW_Pin, GPIO_PIN_SET);
     }
 }

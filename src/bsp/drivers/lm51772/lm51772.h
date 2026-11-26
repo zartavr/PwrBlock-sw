@@ -56,11 +56,11 @@ void lm51772_on(void);
 void lm51772_off(void);
 
 /**
- * @brief Set VOUT gate state
+ * @brief Set OUT_EN_MCU signal
  *
- * @param enabled - if true: gate open, VOUT powered
+ * @param enabled - if true and no alert reported by INA_ALERT - VOUT is powered
  */
-void output_en_mcu_set(bool enabled);
+void lm51772_output_set(bool enabled);
 
 /**
  * @brief Switch LM51772 ILIM shunts
@@ -68,4 +68,4 @@ void output_en_mcu_set(bool enabled);
  * @param high - true: 200 mOm shunt is used (300 mA max)
  *             - false: 20 mOm shunt is used (3 A max)
  */
-void converter_sensor_set_resolution(bool high);
+void lm51772_sns_resolution_set(bool high);
