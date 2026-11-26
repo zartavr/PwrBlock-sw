@@ -46,6 +46,7 @@ typedef struct
     bool         calib_const_is_write_prot;
 
     RegulatorDrvOutMode mode;
+    uint8_t             status_byte;
     RegulatorCallbacks  callbacks;
 
     bool is_init;
@@ -82,6 +83,7 @@ osStatus_t regulator_drv_reset(void)
     lm_drv.is_ext_curr_lim_en = false;
     lm_drv.mode               = REGULATOR_DRV_OUT_MODE_OFF;
     lm_drv.sns_shunt_r        = LM51772_EXT_ILIM_SENS_SHUNT_3A_R;
+    lm_drv.status_byte        = 0;
 
     // Init storage of calibration consts
     // (calib_const_init falls back to neutral coeffs on failure)
@@ -491,7 +493,7 @@ uint32_t regulator_drv_i_min_get(void)
 osStatus_t regulator_drv_mode_poll(void)
 {
     osStatus_t read_status = osError;
-    uint8_t    val;
+    uint8_t    val         = 0;
 
     if (lm_drv.is_init == false) {
         return osErrorResource;
@@ -500,6 +502,7 @@ osStatus_t regulator_drv_mode_poll(void)
     read_status = read(LM51772_REG_STATUS_BYTE, &val);
     if (read_status == osOK) {
         RegulatorDrvOutMode new_mode;
+        lm_drv.status_byte = val;
 
         // Check is VOUT unit in off state
         if (val & LM51772_STATUS_BYTE_OFF_Msk) {
@@ -526,6 +529,11 @@ osStatus_t regulator_drv_mode_poll(void)
     }
 
     return read_status;
+}
+
+uint8_t regulator_drv_status_get(void)
+{
+    return lm_drv.status_byte;
 }
 
 osStatus_t regulator_drv_ext_cur_lim_set(bool is_enabled)

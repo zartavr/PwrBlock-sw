@@ -230,6 +230,25 @@ scpi_result_t SCPI_CurrentProtectionLevelQ(scpi_t* context);
  */
 scpi_result_t SCPI_CurrentProtectionClear(scpi_t* context);
 
+
+/**
+ * SOURce:STATus?
+ * @brief Read latched status byte of LM51772
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_SourceStatusQ(scpi_t* context);
+
+/**
+ * SOURce:STATus:CLEar
+ * @brief Clear faults in status byte of LM51772
+ *
+ * @param context
+ * @return scpi_result_t
+ */
+scpi_result_t SCPI_SourceStatusClear(scpi_t* context);
+
 /**
  * CALibration:SECUre:STATe {OFF | ON | 0 | 1}
  * @brief Set up write protection secure flag for calibration consts.

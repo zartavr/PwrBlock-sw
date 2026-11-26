@@ -209,6 +209,12 @@ osStatus_t regulator_drv_cdc_gain_set(uint8_t val);
 osStatus_t regulator_drv_clear_faults(void);
 
 /**
+ * @brief Get latched status byte, read on poll state
+ *
+ */
+uint8_t regulator_drv_status_get(void);
+
+/**
  * @brief Set power stage.
  *
  * @param is_enabled True - conversion (power stage) enabled, False - conversion

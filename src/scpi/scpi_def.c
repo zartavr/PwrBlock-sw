@@ -151,6 +151,15 @@ const scpi_command_t scpi_commands[] = {
      .pattern  = "[SOURce]:CURRent:PROTection:CLEar",
      .callback = SCPI_CurrentProtectionClear,
      },
+    // LM51772 status byte
+    {
+     .pattern  = "SOURce:STATus?",
+     .callback = SCPI_SourceStatusQ,
+     },
+    {
+     .pattern  = "SOURce:STATus:CLEar",
+     .callback = SCPI_SourceStatusClear,
+     },
     /* STATus subsystem */
     {
      .pattern  = "STATus:OPERation[:EVENt]?",

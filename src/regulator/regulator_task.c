@@ -162,6 +162,16 @@ uint32_t regulator_v_min_get(void)
     return regulator_drv_v_min_get();
 }
 
+uint8_t regulator_status_get(void)
+{
+    return regulator_drv_status_get();
+}
+
+uint8_t regulator_status_clear(void)
+{
+    return regulator_drv_clear_faults();
+}
+
 void regulator_i_set(uint32_t val_ma)
 {
     RegulatorQueueMessage msg = {.cmd = REGULATOR_CMD_SET_I, .value.u = val_ma};

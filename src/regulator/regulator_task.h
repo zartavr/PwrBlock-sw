@@ -62,6 +62,18 @@ uint32_t regulator_v_max_get(void);
 uint32_t regulator_v_min_get(void);
 
 /**
+ * @brief Read lathced status byte, read on poll state
+ *
+ */
+uint8_t regulator_status_get(void);
+
+/**
+ * @brief Clear faults in status byte, return latched value
+ *
+ */
+uint8_t regulator_status_clear(void);
+
+/**
  * @brief Set current limit for DC-DC driver.
  *
  * @param val New value in milliamperes.
