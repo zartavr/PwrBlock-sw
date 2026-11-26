@@ -39,12 +39,14 @@ typedef struct
     bool        is_hiv_mode;
     bool        is_drv1_en;
     bool        is_ext_curr_lim_en;
+    float_t     sns_shunt_r;
     osMutexId_t mutex;
 
     CalibConst_t calib_const;
     bool         calib_const_is_write_prot;
 
     RegulatorDrvOutMode mode;
+    uint8_t             status_byte;
     RegulatorCallbacks  callbacks;
 
     bool is_init;
@@ -80,6 +82,8 @@ osStatus_t regulator_drv_reset(void)
     lm_drv.is_drv1_en         = false;
     lm_drv.is_ext_curr_lim_en = false;
     lm_drv.mode               = REGULATOR_DRV_OUT_MODE_OFF;
+    lm_drv.sns_shunt_r        = LM51772_EXT_ILIM_SENS_SHUNT_3A_R;
+    lm_drv.status_byte        = 0;
 
     // Init storage of calibration consts
     // (calib_const_init falls back to neutral coeffs on failure)
@@ -284,6 +288,8 @@ osStatus_t regulator_drv_output_set(bool is_enabled)
         lm_drv.is_hiv_mode = true;
     }
 
+    lm51772_output_set(is_enabled);
+
     // Release driver mutex
     osMutexRelease(lm_drv.mutex);
     return status;
@@ -394,6 +400,15 @@ osStatus_t regulator_drv_ilim_set(uint32_t current_ma)
     lm_drv.i_calib_ma =
         constrain_f(i_calib_f, LM51772_CURRENT_MIN_MA, LM51772_CURRENT_MAX_MA);
 
+    if (lm_drv.i_calib_ma <= 300) {
+        lm51772_sns_resolution_set(true);
+        lm_drv.sns_shunt_r = LM51772_EXT_ILIM_SENS_SHUNT_0A3_R;
+    }
+    else {
+        lm51772_sns_resolution_set(false);
+        lm_drv.sns_shunt_r = LM51772_EXT_ILIM_SENS_SHUNT_3A_R;
+    }
+
     if (lm_drv.is_ext_curr_lim_en == false) {
         buf = (uint8_t)(lm_drv.i_calib_ma / LM51772_CURRENT_LIM_STEP_MA);
 
@@ -402,8 +417,8 @@ osStatus_t regulator_drv_ilim_set(uint32_t current_ma)
         }
     }
     else {
-        float dac_vout =
-            LM51772_EXT_ILIM_RATIO_COEFF * (float)lm_drv.i_calib_ma / 1000.0F;
+        float dac_vout = lm_drv.sns_shunt_r * LM51772_EXT_ILIM_RATIO_COEFF *
+                         (float)lm_drv.i_calib_ma / 1000.0F;
         dac_write(dac_vout);
         status = osOK;
     }
@@ -478,7 +493,7 @@ uint32_t regulator_drv_i_min_get(void)
 osStatus_t regulator_drv_mode_poll(void)
 {
     osStatus_t read_status = osError;
-    uint8_t    val;
+    uint8_t    val         = 0;
 
     if (lm_drv.is_init == false) {
         return osErrorResource;
@@ -487,6 +502,7 @@ osStatus_t regulator_drv_mode_poll(void)
     read_status = read(LM51772_REG_STATUS_BYTE, &val);
     if (read_status == osOK) {
         RegulatorDrvOutMode new_mode;
+        lm_drv.status_byte = val;
 
         // Check is VOUT unit in off state
         if (val & LM51772_STATUS_BYTE_OFF_Msk) {
@@ -513,6 +529,11 @@ osStatus_t regulator_drv_mode_poll(void)
     }
 
     return read_status;
+}
+
+uint8_t regulator_drv_status_get(void)
+{
+    return lm_drv.status_byte;
 }
 
 osStatus_t regulator_drv_ext_cur_lim_set(bool is_enabled)

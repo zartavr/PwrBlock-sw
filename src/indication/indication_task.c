@@ -21,8 +21,8 @@
 
 typedef struct
 {
-    LedName led_name;
-    IndicationState   state;
+    LedName         led_name;
+    IndicationState state;
 } IndicationQueueMessage;
 
 static osMessageQueueId_t indication_q;

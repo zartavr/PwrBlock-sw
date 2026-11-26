@@ -359,6 +359,21 @@ scpi_result_t SCPI_CurrentProtectionClear(scpi_t* context)
     return SCPI_RES_OK;
 }
 
+scpi_result_t SCPI_SourceStatusQ(scpi_t* context)
+{
+    uint8_t status = regulator_status_get();
+    // Return output state
+    SCPI_ResultInt32(context, (int32_t)status);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_SourceStatusClear(scpi_t* context)
+{
+    (void)context;
+    regulator_status_clear();
+    return SCPI_RES_OK;
+}
+
 scpi_result_t SCPI_CalibrationSecureState(scpi_t* context)
 {
     bool state = false;

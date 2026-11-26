@@ -323,8 +323,6 @@ static void fsm_check_alert(void)
             // Check shunt overvoltage threshold alert
             if (mon.is_fuse_en) {
                 if (ina229_diag_check(raw_diag_alrt, INA229_DIAG_SHNTOL)) {
-                    // Disable DC-DC output
-                    regulator_output_set(false);
                     // System status update
                     sys_status_set(SYS_STATUS_SRC_MONITOR, SYS_STATUS_FAULT);
                 }

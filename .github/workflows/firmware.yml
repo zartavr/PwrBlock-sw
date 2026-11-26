@@ -56,10 +56,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Build Docker image
         run: docker build -t power_block-builder .
 
       - name: Build release presets
+        env:
+          SHORT_SHA: ${{ steps.sha.outputs.short }}
         run: |
           set -euo pipefail
 
@@ -67,6 +73,7 @@ jobs:
             --user "$(id -u):$(id -g)" \
             -e GITHUB_REF_NAME \
             -e GITHUB_REF_TYPE \
+            -e SHORT_SHA \
             -v "$PWD:/workspace" \
             -w /workspace \
             power_block-builder \
@@ -87,7 +94,7 @@ jobs:
                 cmake --build --preset "$preset" --parallel
 
                 for ext in elf hex bin map; do
-                  cp "build/power_block.$ext" "dist/power_block-${preset}.$ext"
+                  cp "build/power_block.$ext" "dist/power_block-${preset}-${SHORT_SHA}.$ext"
                 done
               done
 
@@ -98,7 +105,7 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: power_block-firmware
+          name: power_block-firmware-${{ steps.sha.outputs.short }}
           path: dist/*
           if-no-files-found: error
           retention-days: 30
@@ -120,10 +127,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Download firmware artifacts
         uses: actions/download-artifact@v8
         with:
-          name: power_block-firmware
+          name: power_block-firmware-${{ steps.sha.outputs.short }}
           path: dist
 
       - name: Generate artifact attestation
